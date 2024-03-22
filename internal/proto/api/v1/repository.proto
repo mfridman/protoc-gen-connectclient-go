@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package api.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// RepositoryService is the service that provides repository information.
+service RepositoryService {
+  // GetRepository returns the repository information for the given repository.
+  rpc GetRepository(GetRepositoryRequest) returns (GetRepositoryResponse);
+}
+
+message GetRepositoryRequest {
+  string name = 1;
+}
+
+message GetRepositoryResponse {
+  Repository repository = 1;
+}
+
+message Repository {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string url = 4;
+  string owner = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}

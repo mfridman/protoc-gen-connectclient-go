@@ -1,0 +1,18 @@
+version: v1
+
+managed:
+  enabled: true
+  go_package_prefix:
+    default: github.com/mfridman/protoc-gen-connectclient-go/internal/testdata/gen
+
+plugins:
+  - plugin: buf.build/protocolbuffers/go
+    out: internal/testdata/gen
+    opt:
+      - paths=source_relative
+  - plugin: connectclient-go
+    path: ./build/protoc-gen-connectclient-go
+    out: internal/testdata/gen
+    opt:
+      - paths=source_relative
+      - separate_packages=true

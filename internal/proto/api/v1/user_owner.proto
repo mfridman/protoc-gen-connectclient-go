@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package api.v1;
+
+// UserService is a service for user operations.
+service UserService {
+  // GetUser returns a user by ID.
+  rpc GetUser(GetUserRequest) returns (GetUserResponse) {}
+  // CreateUser creates a new user.
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
+  // UpdateUser updates a user.
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse) {}
+  // DeleteUser deletes a user by ID.
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {}
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message GetUserResponse {
+  string name = 2;
+}
+
+message CreateUserRequest {
+  string name = 1;
+}
+
+message CreateUserResponse {
+  string id = 2;
+}
+
+message UpdateUserRequest {
+  string name = 1;
+}
+
+message UpdateUserResponse {}
+
+message DeleteUserRequest {
+  string id = 1;
+}
+
+message DeleteUserResponse {}
+
+service OwnerService {
+  rpc GetOwner(GetOwnerRequest) returns (GetOwnerResponse) {}
+}
+
+message GetOwnerRequest {
+  string id = 1;
+}
+
+message GetOwnerResponse {
+  string name = 2;
+}
