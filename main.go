@@ -24,7 +24,7 @@ func main() {
 	defer stop()
 
 	environ := os.Environ()
-	environ = append(environ, "PLUGIN_VERSION="+getVersionFromBuildInfo())
+	environ = append(environ, plugin.PLUGIN_VERSION+"="+getVersionFromBuildInfo())
 
 	go func() {
 		defer stop()
