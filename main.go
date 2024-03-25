@@ -81,6 +81,12 @@ func runArgs(args []string) error {
 //     revision, followed by ", dirty" if the working directory was dirty. For example,
 //     "devel (abcdef012345, dirty)" or "devel (abcdef012345)". If the VCS revision is not available,
 //     "unknown revision" is used instead.
+//
+// Note, vcs info not stamped when built listing .go files directly. E.g.,
+//   - `go build main.go`
+//   - `go build .`
+//
+// For more information, see https://github.com/golang/go/issues/51279
 func getVersionFromBuildInfo() string {
 	if version != "" {
 		return version
