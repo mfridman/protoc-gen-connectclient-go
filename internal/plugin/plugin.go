@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -97,6 +98,9 @@ func generate(opt *options, p *protogen.Plugin) error {
 		return nil
 	}
 	for filePath, services := range all {
+		sort.Slice(services, func(i, j int) bool {
+			return services[i].GoName < services[j].GoName
+		})
 		f := p.FilesByPath[filePath]
 		goImportPath := f.GoImportPath
 		if opt.separatePackages {
@@ -215,6 +219,9 @@ func generatePackageClient(
 	}{
 		UserAgent: "connectclient-go/" + opt.pluginVersion,
 	}
+	sort.Slice(data.Services, func(i, j int) bool {
+		return data.Services[i] < data.Services[j]
+	})
 	for _, s := range d.services {
 		data.Services = append(data.Services, s.GoName)
 	}

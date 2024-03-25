@@ -8,6 +8,16 @@ import (
 	v1 "github.com/mfridman/protoc-gen-connectclient-go/internal/testdata/gen/api/v1"
 )
 
+type OwnerServiceClient service
+
+func (s *OwnerServiceClient) GetOwner(ctx context.Context, req *v1.GetOwnerRequest) (*v1.GetOwnerResponse, error) {
+	resp := new(v1.GetOwnerResponse)
+	if err := s.client.do(ctx, req, resp, "/api.v1.OwnerService/GetOwner"); err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
 type UserServiceClient service
 
 func (s *UserServiceClient) GetUser(ctx context.Context, req *v1.GetUserRequest) (*v1.GetUserResponse, error) {
@@ -37,16 +47,6 @@ func (s *UserServiceClient) UpdateUser(ctx context.Context, req *v1.UpdateUserRe
 func (s *UserServiceClient) DeleteUser(ctx context.Context, req *v1.DeleteUserRequest) (*v1.DeleteUserResponse, error) {
 	resp := new(v1.DeleteUserResponse)
 	if err := s.client.do(ctx, req, resp, "/api.v1.UserService/DeleteUser"); err != nil {
-		return nil, err
-	}
-	return resp, nil
-}
-
-type OwnerServiceClient service
-
-func (s *OwnerServiceClient) GetOwner(ctx context.Context, req *v1.GetOwnerRequest) (*v1.GetOwnerResponse, error) {
-	resp := new(v1.GetOwnerResponse)
-	if err := s.client.do(ctx, req, resp, "/api.v1.OwnerService/GetOwner"); err != nil {
 		return nil, err
 	}
 	return resp, nil

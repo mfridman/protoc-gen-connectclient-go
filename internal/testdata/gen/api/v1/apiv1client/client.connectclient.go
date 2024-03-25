@@ -25,9 +25,9 @@ type Client struct {
 	checkError        func(context.Context, error)
 	userAgent         string
 	common            service
-	RepositoryService *RepositoryServiceClient
-	UserService       *UserServiceClient
 	OwnerService      *OwnerServiceClient
+	UserService       *UserServiceClient
+	RepositoryService *RepositoryServiceClient
 }
 
 func NewClient(baseURL string, opts ...ClientOption) *Client {
@@ -40,9 +40,9 @@ func NewClient(baseURL string, opts ...ClientOption) *Client {
 		opt.apply(c)
 	}
 	c.common.client = c
-	c.RepositoryService = (*RepositoryServiceClient)(&c.common)
-	c.UserService = (*UserServiceClient)(&c.common)
 	c.OwnerService = (*OwnerServiceClient)(&c.common)
+	c.UserService = (*UserServiceClient)(&c.common)
+	c.RepositoryService = (*RepositoryServiceClient)(&c.common)
 	return c
 }
 
