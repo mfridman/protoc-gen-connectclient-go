@@ -1,6 +1,6 @@
 .PHONY: build
 build:
-	@go build -o build/protoc-gen-connectclient-go main.go
+	@go build -o build/protoc-gen-connectclient-go .
 	@./build/protoc-gen-connectclient-go -version
 
 .PHONY: proto

@@ -62,11 +62,7 @@ func runArgs(args []string) error {
 	for _, arg := range args {
 		switch arg {
 		case "--version", "-version":
-			var version string
-			if version == "" {
-				version = getVersionFromBuildInfo()
-			}
-			fmt.Fprintf(os.Stdout, "%s version: %s\n", plugin.Name, strings.TrimSpace(version))
+			fmt.Fprintf(os.Stdout, "%s version: %s\n", plugin.Name, strings.TrimSpace(getVersionFromBuildInfo()))
 			os.Exit(0)
 		default:
 			fmt.Fprintf(os.Stderr, "%s: unknown argument: %s\n", plugin.Name, arg)
@@ -86,6 +82,9 @@ func runArgs(args []string) error {
 //     "devel (abcdef012345, dirty)" or "devel (abcdef012345)". If the VCS revision is not available,
 //     "unknown revision" is used instead.
 func getVersionFromBuildInfo() string {
+	if version != "" {
+		return version
+	}
 	const defaultVersion = "devel"
 
 	buildInfo, ok := debug.ReadBuildInfo()
