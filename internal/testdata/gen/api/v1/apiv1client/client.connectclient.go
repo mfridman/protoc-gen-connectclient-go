@@ -26,8 +26,8 @@ type Client struct {
 	userAgent         string
 	common            service
 	OwnerService      *OwnerServiceClient
-	UserService       *UserServiceClient
 	RepositoryService *RepositoryServiceClient
+	UserService       *UserServiceClient
 }
 
 func NewClient(baseURL string, opts ...ClientOption) *Client {
@@ -41,8 +41,8 @@ func NewClient(baseURL string, opts ...ClientOption) *Client {
 	}
 	c.common.client = c
 	c.OwnerService = (*OwnerServiceClient)(&c.common)
-	c.UserService = (*UserServiceClient)(&c.common)
 	c.RepositoryService = (*RepositoryServiceClient)(&c.common)
+	c.UserService = (*UserServiceClient)(&c.common)
 	return c
 }
 

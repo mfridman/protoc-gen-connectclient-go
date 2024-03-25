@@ -219,12 +219,12 @@ func generatePackageClient(
 	}{
 		UserAgent: "connectclient-go/" + opt.pluginVersion,
 	}
-	sort.Slice(data.Services, func(i, j int) bool {
-		return data.Services[i] < data.Services[j]
-	})
 	for _, s := range d.services {
 		data.Services = append(data.Services, s.GoName)
 	}
+	sort.Slice(data.Services, func(i, j int) bool {
+		return data.Services[i] < data.Services[j]
+	})
 	golden, err := prepareGoldenClient()
 	if err != nil {
 		return err
