@@ -1,13 +1,14 @@
 # protoc-gen-connectclient-go
 
-A Protobuf plugin that generates a **single Connect Go client for all services** within a package --
-batteries included for the most common use cases. For more information, see the [But why?](#but-why)
-section.
+A Protobuf plugin that generates a **single Connect Go client** for all services, batteries included
+🔋. For more information, see the [But why?](#but-why) section.
 
 [Connect](https://connectrpc.com/) is a simple, yet robust, RPC framework that allows you to define
 services using Protobuf and generate clients and servers in multiple languages.
 
-This plugin MUST be generated with the `protoc-gen-go` plugin to generate the base types.
+This plugin MUST be generated alongside the [`protoc-gen-go`
+plugin](https://pkg.go.dev/google.golang.org/protobuf/cmd/protoc-gen-go), as it relies on the
+generated base types.
 
 > [!NOTE]
 >
@@ -22,7 +23,7 @@ go install github.com/mfridman/protoc-gen-connectclient-go@latest
 
 ## Examples
 
-See the [examples](./examples) directory for a few examples of how to generate and use the client.
+See the [examples](./examples) directory for a few practical examples against live Connect services.
 
 ## Plugin options
 
@@ -49,7 +50,8 @@ the client. This is an experimental feature that uses wasm to generate the base 
 
 ### `single_file`
 
-When set to `true`, the plugin will generate all code into a single file.
+When set to `true`, the plugin will generate all code into a single file instead of splitting it up
+by service.
 
 (Not yet implemented)
 
@@ -61,8 +63,8 @@ applications. But I don't need the full power of the official Connect library.
 Here's a quick list of what this library does and does not do:
 
 - No streaming support
-- No generics, just plain old structs
-  - Removes the need to wrap using `connect.NewRquest` and `connect.NewRespons`
+- **No generics, just plain old structs**
+  - Removes the need to wrap messages using `connect.NewRquest` and `connect.NewRespons`
 - Does not generate Service-related code (very lightweight)
   - No runtime libraries, all generated code is self-contained
 - No interceptors, just hooks for tapping into the request and response lifecycle
