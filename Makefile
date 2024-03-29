@@ -16,8 +16,8 @@ examples: build
 	@rm -rf examples/bestofgo/gen
 	@buf generate buf.build/mf192/bestofgo --template ./examples/bestofgo/buf.gen.yaml --include-imports
 
-	@rm -rf examples/buf-api/gen
-	@buf generate buf.build/bufbuild/buf --template ./examples/buf-api/buf.gen.yaml --include-imports --path buf/alpha/registry/v1alpha1/authn.proto
+	@rm -rf examples/bufapi/gen
+	@buf generate buf.build/bufbuild/buf --template ./examples/bufapi/buf.gen.yaml --include-imports --path buf/alpha/registry/v1alpha1/authn.proto
 
 .PHONY: generate
 generate: proto examples

@@ -7,13 +7,13 @@ import (
 	"os"
 	"time"
 
-	registryv1alpha1 "github.com/mfridman/protoc-gen-connectclient-go/examples/buf-api/gen/buf/alpha/registry/v1alpha1"
+	registryv1alpha1 "github.com/mfridman/protoc-gen-connectclient-go/examples/bufapi/gen/buf/alpha/registry/v1alpha1"
 )
 
 // Try running this with a BUF_TOKEN environment variable set to a valid token.
 //
 //  1. Run make examples
-// 	2. Run this program: BUF_TOKEN=<token> go run ./examples/buf-api
+// 	2. Run this program: BUF_TOKEN=<token> go run ./examples/bufapi
 
 func main() {
 	log.SetFlags(0)

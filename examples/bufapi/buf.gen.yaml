@@ -3,15 +3,15 @@ version: v1
 managed:
   enabled: true
   go_package_prefix:
-    default: github.com/mfridman/protoc-gen-connectclient-go/examples/buf-api/gen
+    default: github.com/mfridman/protoc-gen-connectclient-go/examples/bufapi/gen
 
 plugins:
   - plugin: buf.build/protocolbuffers/go
-    out: examples/buf-api/gen
+    out: examples/bufapi/gen
     opt:
       - paths=source_relative
   - plugin: connectclient-go
     path: ./build/protoc-gen-connectclient-go
-    out: examples/buf-api/gen
+    out: examples/bufapi/gen
     opt:
       - paths=source_relative
