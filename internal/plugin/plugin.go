@@ -191,6 +191,7 @@ func generatePackageClient(
 	// Add imports
 	imports := []string{
 		"bytes",
+		"compress/gzip",
 		"context",
 		"encoding/json",
 		"fmt",
@@ -198,8 +199,8 @@ func generatePackageClient(
 		"net/http",
 		"path",
 
+		"google.golang.org/protobuf/proto",
 		"google.golang.org/protobuf/reflect/protoreflect",
-		"google.golang.org/protobuf/encoding/protojson",
 	}
 	for i := range imports {
 		// Yes, this is weird, you're typically supposed to use the full Go identifier. But, if

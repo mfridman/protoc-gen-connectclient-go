@@ -2,6 +2,7 @@ package golden
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,7 +10,7 @@ import (
 	"net/http"
 	"path"
 
-	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -74,7 +75,7 @@ func (c *Client) do(ctx context.Context, req, resp protoreflect.ProtoMessage, pr
 			c.checkError(ctx, retErr)
 		}
 	}()
-	by, err := protojson.Marshal(req)
+	by, err := proto.Marshal(req)
 	if err != nil {
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -82,8 +83,8 @@ func (c *Client) do(ctx context.Context, req, resp protoreflect.ProtoMessage, pr
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
-	httpRequest.Header.Set("Content-Type", "application/json")
-	httpRequest.Header.Set("Accept", "application/json")
+	httpRequest.Header.Set("Content-Type", "application/proto")
+	httpRequest.Header.Set("Accept-Encoding", "gzip")
 	if c.userAgent != "" {
 		httpRequest.Header.Set("User-Agent", c.userAgent)
 	}
@@ -98,7 +99,18 @@ func (c *Client) do(ctx context.Context, req, resp protoreflect.ProtoMessage, pr
 	}
 	defer httpResponse.Body.Close()
 
-	data, err := io.ReadAll(httpResponse.Body)
+	var readCloser io.ReadCloser
+	switch httpResponse.Header.Get("Content-Encoding") {
+	case "gzip":
+		readCloser, err = gzip.NewReader(httpResponse.Body)
+		if err != nil {
+			return fmt.Errorf("failed to create gzip reader: %w", err)
+		}
+		defer readCloser.Close()
+	default:
+		readCloser = httpResponse.Body
+	}
+	data, err := io.ReadAll(readCloser)
 	if err != nil {
 		return fmt.Errorf("failed to read response: %w", err)
 	}
@@ -123,7 +135,7 @@ func (c *Client) do(ctx context.Context, req, resp protoreflect.ProtoMessage, pr
 			Message:     httpErr.Message,
 		}
 	}
-	if err := protojson.Unmarshal(data, resp); err != nil {
+	if err := proto.Unmarshal(data, resp); err != nil {
 		return fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 	return nil
