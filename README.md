@@ -64,7 +64,7 @@ Here's a quick list of what this library does and does not do:
 
 - No streaming support
 - **No generics, just plain old structs**
-  - Removes the need to wrap messages using `connect.NewRquest` and `connect.NewRespons`
+  - Removes the need to wrap messages using `connect.NewRequest` and `connect.NewResponse`
 - Does not generate Service-related code (very lightweight)
   - No runtime libraries, all generated code is self-contained
 - No interceptors, just hooks for tapping into the request and response lifecycle
@@ -90,7 +90,7 @@ official library.
 ### Errors
 
 The generated client does not return Connect errors. If a request was sent, it will return an
-`*HTTPError` and the only field that is gauranteed to be set is `Code` (this is the HTTP status
+`*HTTPError` and the only field that is guaranteed to be set is `Code` (this is the HTTP status
 code, 401, 404, etc.).
 
 Connect services are typically mounted on a `net/http` router and the request maybe not reach the
