@@ -3,6 +3,10 @@
 A Protobuf plugin that generates a **single Connect Go client** for all services, batteries included
 🔋. For more information, see the [But why?](#but-why) section.
 
+<p align="left">
+  <img src="examples/example.png" width=500>
+</p>
+
 [Connect](https://connectrpc.com/) is a simple, yet robust, RPC framework that allows you to define
 services using Protobuf and generate clients and servers in multiple languages.
 
