@@ -68,19 +68,18 @@ Here's a quick list of what this library does and does not do:
 
 - No streaming support
 - **No generics, just plain old structs**
-  - Removes the need to wrap messages using `connect.NewRequest` and `connect.NewResponse`
+  - Removes the need to wrap messages using `connect.NewRequest/Response`
 - Does not generate Service-related code (very lightweight)
-  - No runtime libraries, all generated code is self-contained
+  - Only one runtime dependency: `google.golang.org/protobuf`
+  - All generated code is self-contained
 - No interceptors, just hooks for tapping into the request and response lifecycle
 - No dependencies on generated Connect code or `connectrpc.com/connect` library
-  - It's just `POST` and `application/json` over HTTP using `http.DefaultClient` (you can override
-    the default client)
-  - Only one runtime dependency: `google.golang.org/protobuf`
+  - It's just `POST` over HTTP using `http.DefaultClient` (client is configurable)
 - No need to maintain a separate client for each service
   - Just create a single client with `NewClient` and that's it, batteries included 🔋
-- Functional options to tailor the client to your needs
+- Functional options for configuring the client, examples:
   - Attach a token when the client is created, and it will be used for all requests
-  - Attach an optional logger
+  - Attach a logger to debug requests and responses
   - Use a custom HTTP client, such as a retryable client like
     [hashicorp/go-retryablehttp](https://github.com/hashicorp/go-retryablehttp)
 
