@@ -68,36 +68,40 @@ Here's a quick list of what this library does and does not do:
 
 - No streaming support
 - **No generics, just plain old structs**
-  - Removes the need to wrap messages using `connect.NewRequest/Response`
+  - Eliminates the need to wrap messages using `connect.NewRequest/Response`
 - Does not generate Service-related code (very lightweight)
   - Only one runtime dependency: `google.golang.org/protobuf`
   - All generated code is self-contained
 - No interceptors, just hooks for tapping into the request and response lifecycle
-- No dependencies on generated Connect code or `connectrpc.com/connect` library
-  - It's just `POST` over HTTP using `http.DefaultClient` (client is configurable)
+- No dependence on generated Connect code or `connectrpc.com/connect` library
+  - Simply uses `POST` over HTTP via `http.DefaultClient` (configurable client)
 - No need to maintain a separate client for each service
-  - Just create a single client with `NewClient` and that's it, batteries included 🔋
-- Functional options for configuring the client, examples:
-  - Attach a token when the client is created, and it will be used for all requests
+  - Just create a single client with `NewClient` and you're good to go, batteries included 🔋
+- Provides functional options for configuring the client, allowing you to:
+  - Attaching a token when creating the client, which will be used for all requests
   - Attach a logger to debug requests and responses
-  - Use a custom HTTP client, such as a retryable client like
+  - Use a custom HTTP client, such as
     [hashicorp/go-retryablehttp](https://github.com/hashicorp/go-retryablehttp)
 
 The end goal to generate a **simple client for all your services** without writing a lot of
 boilerplate code. It's not meant to be a full replacement for the official Connect plugin or
 library. If you need streaming, interceptors, or other advanced features, you should use the
-official library.
+official library!
 
 ## Gotchas
 
 ### Errors
 
 The generated client does not return Connect errors. If a request was sent, it will return an
-`*HTTPError` and the only field that is guaranteed to be set is `Code` (this is the HTTP status
-code, 401, 404, etc.).
+`*HTTPError` and the only fields that are guaranteed to be set are `Code` (this is the HTTP status
+code, 401, 404, etc.) and `Procedure` (the name of the service method that was called).
 
-Connect services are typically mounted on a `net/http` router and the request maybe not reach the
-rpc layer, getting handled by middleware which do not return a Connect error.
+Why not `ConnectCode` or `Message`?
+
+Connect services are typically mounted on a `net/http` router. There might be cases where the
+request does not reach the RPC layer, and instead gets handled by middleware that doesn't return a
+Connect error. By uniformly returning an `*HTTPError`, you can handle all errors in a consistent
+manner.
 
 ```go
 type HTTPError struct {
