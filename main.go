@@ -13,8 +13,6 @@ import (
 	"github.com/mfridman/protoc-gen-connectclient-go/internal/plugin"
 )
 
-var version string
-
 func main() {
 	runArgs(os.Args[1:])
 
@@ -22,7 +20,7 @@ func main() {
 	defer stop()
 
 	environ := os.Environ()
-	environ = append(environ, plugin.PLUGIN_VERSION+"="+buildversion.New(version))
+	environ = append(environ, plugin.PLUGIN_VERSION+"="+buildversion.New())
 
 	go func() {
 		defer stop()
@@ -60,7 +58,7 @@ func runArgs(args []string) error {
 	for _, arg := range args {
 		switch arg {
 		case "--version", "-version":
-			fmt.Fprintf(os.Stdout, "%s version: %s\n", plugin.Name, buildversion.New(version))
+			fmt.Fprintf(os.Stdout, "%s version: %s\n", plugin.Name, buildversion.New())
 			os.Exit(0)
 		default:
 			fmt.Fprintf(os.Stderr, "%s: unknown argument: %s\n", plugin.Name, arg)
