@@ -4,7 +4,7 @@ A Protobuf plugin that generates a **single Connect Go client** for all services
 🔋. For more information, see the [But why?](#but-why) section.
 
 <p align="center">
-  <img src="examples/example_2.png" width=600px>
+  <img src="examples/example_2.png" width=800px>
 </p>
 
 [Connect](https://connectrpc.com/) is a simple, yet robust, RPC framework that allows you to define
