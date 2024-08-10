@@ -9,15 +9,16 @@ proto: build
 	@buf generate ./internal/proto --template ./internal/proto/buf.gen.yaml
 
 .PHONY: examples
-examples: build
-	@rm -rf examples/eliza/gen
-	@buf generate buf.build/connectrpc/eliza --template ./examples/eliza/buf.gen.yaml --include-imports
+examples: build example-bufapi example-eliza example-bestofgo
 
-	@rm -rf examples/bestofgo/gen
-	@buf generate buf.build/mf192/bestofgo --template ./examples/bestofgo/buf.gen.yaml --include-imports
+example-bufapi:
+	@buf generate --template ./examples/bufapi/buf.gen.yaml
 
-	@rm -rf examples/bufapi/gen
-	@buf generate buf.build/bufbuild/buf --template ./examples/bufapi/buf.gen.yaml --include-imports --path buf/alpha/registry/v1alpha1/authn.proto
+example-eliza:
+	@buf generate --template ./examples/eliza/buf.gen.yaml
+
+example-bestofgo:
+	@buf generate --template ./examples/bestofgo/buf.gen.yaml
 
 .PHONY: generate
 generate: proto examples

@@ -1,17 +1,24 @@
-version: v1
+version: v2
+
+clean: true
 
 managed:
   enabled: true
-  go_package_prefix:
-    default: github.com/mfridman/protoc-gen-connectclient-go/examples/bestofgo/gen
+  override:
+    - file_option: go_package_prefix
+      value: github.com/mfridman/protoc-gen-connectclient-go/examples/bestofgo/gen
+
+inputs:
+  - module: buf.build/mf192/bestofgo
 
 plugins:
-  - plugin: buf.build/protocolbuffers/go
+  - remote: buf.build/protocolbuffers/go
+    include_imports: true
     out: examples/bestofgo/gen
     opt:
       - paths=source_relative
-  - plugin: connectclient-go
-    path: ./build/protoc-gen-connectclient-go
+  - local: ./build/protoc-gen-connectclient-go
+    include_imports: true
     out: examples/bestofgo/gen
     opt:
       - paths=source_relative
