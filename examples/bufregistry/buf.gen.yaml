@@ -3,23 +3,23 @@ version: v2
 clean: true
 
 inputs:
-  - module: buf.build/bufbuild/buf
+  - module: buf.build/bufbuild/registry
     paths:
-      - buf/alpha/registry/v1alpha1/authn.proto
+      - buf/registry/owner/v1/user_service.proto
 managed:
   enabled: true
   override:
     - file_option: go_package_prefix
-      value: github.com/mfridman/protoc-gen-connectclient-go/examples/bufapi/gen
+      value: github.com/mfridman/protoc-gen-connectclient-go/examples/bufregistry/gen
 
 plugins:
   - remote: buf.build/protocolbuffers/go
     include_imports: true
-    out: examples/bufapi/gen
+    out: examples/bufregistry/gen
     opt:
       - paths=source_relative
   - local: ./build/protoc-gen-connectclient-go
     include_imports: true
-    out: examples/bufapi/gen
+    out: examples/bufregistry/gen
     opt:
       - paths=source_relative

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	registryv1alpha1 "github.com/mfridman/protoc-gen-connectclient-go/examples/bufapi/gen/buf/alpha/registry/v1alpha1"
+	ownerv1 "github.com/mfridman/protoc-gen-connectclient-go/examples/bufregistry/gen/buf/registry/owner/v1"
 )
 
 var (
@@ -23,10 +23,15 @@ var (
 // Try running this with a BUF_TOKEN environment variable set to a valid token.
 //
 //  1. Run make examples
-// 	2. Run this program: BUF_TOKEN=<token> go run ./examples/bufapi
+// 	2. Run this program: BUF_TOKEN=<token> go run ./examples/bufregistry <username>
 
 func main() {
 	log.SetFlags(0)
+
+	if len(os.Args) < 2 {
+		log.Fatalf("Usage: %s <username>", os.Args[0])
+	}
+	username := os.Args[1]
 
 	remote := cmp.Or(os.Getenv("BUF_REMOTE"), defaultRemote)
 
@@ -39,18 +44,30 @@ func main() {
 		}
 	}
 
-	client := registryv1alpha1.NewClient(
+	client := ownerv1.NewClient(
 		"https://"+remote,
-		registryv1alpha1.WithModifyRequest(func(r *http.Request) error {
+		ownerv1.WithModifyRequest(func(r *http.Request) error {
 			r.Header.Set("Authorization", "Bearer "+token)
 			return nil
 		}),
 	)
-	resp, err := client.AuthnService.GetCurrentUser(context.Background(), &registryv1alpha1.GetCurrentUserRequest{})
+	resp, err := client.UserService.GetUsers(context.Background(), &ownerv1.GetUsersRequest{
+		UserRefs: []*ownerv1.UserRef{
+			{
+				Value: &ownerv1.UserRef_Name{
+					Name: username,
+				},
+			},
+		},
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Response:", resp.User.Username, "created on", resp.User.CreateTime.AsTime().Format(time.DateTime))
+	if len(resp.Users) == 0 {
+		log.Fatal("no users found")
+	}
+	user := resp.Users[0]
+	log.Println("Response:", user.Name, "created on", user.CreateTime.AsTime().Format(time.DateTime))
 }
 
 func parseNetrc(machineName string) (string, error) {

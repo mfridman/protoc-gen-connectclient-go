@@ -15,11 +15,11 @@ import (
 // and error handling.
 
 const (
-	key = "time.now"
+	ctxKey = "time.now"
 )
 
 func printDuration(ctx context.Context, err error) {
-	v := ctx.Value(key).(time.Time)
+	v := ctx.Value(ctxKey).(time.Time)
 	log.Printf("DEBUG: elapsed=%dms error=%v\n\n", time.Since(v).Milliseconds(), err)
 }
 
@@ -32,7 +32,7 @@ func main() {
 
 	ctx := context.Background()
 	now := time.Now()
-	ctx = context.WithValue(ctx, key, now)
+	ctx = context.WithValue(ctx, ctxKey, now)
 	resp, err := client.APIService.GetTopReposByYear(ctx, &api.GetTopReposByYearRequest{
 		Year: 2023,
 	})
