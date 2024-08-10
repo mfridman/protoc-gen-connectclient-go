@@ -9,10 +9,13 @@ proto: build
 	@buf generate ./internal/proto --template ./internal/proto/buf.gen.yaml
 
 .PHONY: examples
-examples: build example-bufapi example-eliza example-bestofgo
+examples: build example-bufapi example-bufregistry example-eliza example-bestofgo
 
 example-bufapi:
 	@buf generate --template ./examples/bufapi/buf.gen.yaml
+
+example-bufregistry:
+	@buf generate --template ./examples/bufregistry/buf.gen.yaml
 
 example-eliza:
 	@buf generate --template ./examples/eliza/buf.gen.yaml
