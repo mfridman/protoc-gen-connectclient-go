@@ -35,7 +35,7 @@ func NewClient(baseURL string, opts ...ClientOption) *Client {
 	c := &Client{
 		httpClient: http.DefaultClient,
 		baseURL:    baseURL,
-		userAgent:  "connectclient-go/devel (a75535770984, dirty)",
+		userAgent:  "connectclient-go/devel (fae9c5293627, dirty)",
 	}
 	for _, opt := range opts {
 		opt.apply(c)
