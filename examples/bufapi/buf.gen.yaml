@@ -2,16 +2,15 @@ version: v2
 
 clean: true
 
+inputs:
+  - module: buf.build/bufbuild/buf
+    paths:
+      - buf/alpha/registry/v1alpha1/authn.proto
 managed:
   enabled: true
   override:
     - file_option: go_package_prefix
       value: github.com/mfridman/protoc-gen-connectclient-go/examples/bufapi/gen
-
-inputs:
-  - module: buf.build/bufbuild/buf
-    paths:
-      - buf/alpha/registry/v1alpha1/authn.proto
 
 plugins:
   - remote: buf.build/protocolbuffers/go

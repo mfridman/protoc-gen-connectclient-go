@@ -2,14 +2,13 @@ version: v2
 
 clean: true
 
+inputs:
+  - module: buf.build/mf192/bestofgo
 managed:
   enabled: true
   override:
     - file_option: go_package_prefix
       value: github.com/mfridman/protoc-gen-connectclient-go/examples/bestofgo/gen
-
-inputs:
-  - module: buf.build/mf192/bestofgo
 
 plugins:
   - remote: buf.build/protocolbuffers/go
