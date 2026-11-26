@@ -46,7 +46,6 @@ Deadlines go to the server, and errors carry the Connect code, message, and deta
 - [Generating code](docs/generating.md)
 - [Using the client](docs/client.md)
 - [Binary size](docs/size.md)
-- [Testing](docs/testing.md)
 - [Changelog](CHANGELOG.md)
 - [Examples](examples)
 
