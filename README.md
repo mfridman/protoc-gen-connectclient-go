@@ -1,14 +1,13 @@
 # protoc-gen-connectclient-go
 
-Small, self-contained Go clients for [Connect](https://connectrpc.com/) services.
+Small Go clients for [Connect](https://connectrpc.com/) services, for CLIs and other small programs.
 
-## Why
+- Unary RPCs only. Plain structs, no generics.
+- One `NewClient` per package gives you every service in it.
+- The generated code imports only the standard library and `google.golang.org/protobuf`.
+- It adds at most 64 KiB to a stripped binary. connect-go adds 768 KiB. See [Binary size](docs/size.md).
 
-The connect-go client supports three protocols, two codecs, compression, and streaming. A program that only makes unary calls still links most of that code.
-
-This plugin generates one client per service, and one `Client` per package that bundles them. The generated code calls the service with a plain HTTP `POST` and binary Protobuf. It depends only on the standard library and `google.golang.org/protobuf`: there is no connect-go and no runtime package to import.
-
-A generated client adds at most 64 KiB, stripped, to a program that already uses `net/http`, Protobuf, and `encoding/json`. connect-go v2 adds 768 KiB. See [Binary size](docs/size.md).
+This is not a replacement for [connect-go](https://github.com/connectrpc/connect-go). Use connect-go if you need streaming, interceptors, the gRPC or gRPC-Web protocols, JSON, or a server.
 
 ## Install
 
@@ -20,7 +19,7 @@ Requires Go 1.26 or newer.
 
 ## Use
 
-Add the plugin next to `protoc-gen-go` in `buf.gen.yaml`:
+In `buf.gen.yaml`:
 
 ```yaml
 plugins:
@@ -32,22 +31,18 @@ plugins:
     opt: paths=source_relative
 ```
 
-Then call the service:
+Then:
 
 ```go
 client := elizav1client.NewClient("https://demo.connectrpc.com")
 resp, err := client.ElizaService.Say(ctx, &elizav1.SayRequest{Sentence: "Hello"})
 ```
 
-Deadlines go to the server, and errors carry the Connect code, message, and details.
-
 ## Docs
 
 - [Generating code](docs/generating.md)
 - [Using the client](docs/client.md)
-- [Binary size](docs/size.md)
 - [Changelog](CHANGELOG.md)
-- [Examples](examples)
 
 ## License
 
