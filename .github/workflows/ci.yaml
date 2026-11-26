@@ -12,6 +12,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         go-version: ["1.26.x", "1.27.x"]
     steps:
@@ -34,6 +35,8 @@ jobs:
       - uses: bufbuild/buf-action@37ac33d8960807670a6e9719080e885197b09cc6 # v1.7.0
         with:
           setup_only: true
+          # Pinned: other versions write a different internal/testdata/image.binpb.
+          version: 1.75.0
       - name: Check generated code
         run: |
           make proto

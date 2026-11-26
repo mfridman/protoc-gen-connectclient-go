@@ -10,7 +10,7 @@ This directory has examples of the code that `protoc-gen-connectclient-go` gener
 
 ## Generate the code
 
-The generated code is not committed. From the root of the repository, run:
+The generated code is committed. To generate it again, run this from the root of the repository:
 
 ```shell
 make examples
