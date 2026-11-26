@@ -7,7 +7,17 @@ import "google/protobuf/timestamp.proto";
 // RepositoryService is the service that provides repository information.
 service RepositoryService {
   // GetRepository returns the repository information for the given repository.
-  rpc GetRepository(GetRepositoryRequest) returns (GetRepositoryResponse);
+  rpc GetRepository(GetRepositoryRequest) returns (GetRepositoryResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // WatchRepository streams changes to a repository. Streaming RPCs are not
+  // generated.
+  rpc WatchRepository(WatchRepositoryRequest) returns (stream WatchRepositoryResponse);
+}
+
+// EventService has only streaming RPCs, so no client is generated for it.
+service EventService {
+  rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse);
 }
 
 message GetRepositoryRequest {
@@ -17,6 +27,18 @@ message GetRepositoryRequest {
 message GetRepositoryResponse {
   Repository repository = 1;
 }
+
+message WatchRepositoryRequest {
+  string name = 1;
+}
+
+message WatchRepositoryResponse {
+  Repository repository = 1;
+}
+
+message SubscribeRequest {}
+
+message SubscribeResponse {}
 
 message Repository {
   string id = 1;

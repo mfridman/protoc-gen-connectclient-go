@@ -1,0 +1,20 @@
+// The admin API tests editions and messages from another package.
+edition = "2023";
+
+package admin.v1;
+
+import "google/protobuf/empty.proto";
+
+// AdminService is deprecated.
+service AdminService {
+  option deprecated = true;
+
+  // Health returns an empty message when the server is healthy.
+  rpc Health(google.protobuf.Empty) returns (google.protobuf.Empty);
+}
+
+// Client tests that an empty package_suffix reports a name collision with
+// the generated Client type.
+message Client {
+  string name = 1;
+}

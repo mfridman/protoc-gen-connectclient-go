@@ -13,7 +13,7 @@ managed:
       value: github.com/mfridman/protoc-gen-connectclient-go/examples/bufapi/gen
 
 plugins:
-  - remote: buf.build/protocolbuffers/go
+  - local: [go, tool, protoc-gen-go]
     include_imports: true
     out: examples/bufapi/gen
     opt:

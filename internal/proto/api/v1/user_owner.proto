@@ -7,11 +7,20 @@ service UserService {
   // GetUser returns a user by ID.
   rpc GetUser(GetUserRequest) returns (GetUserResponse) {}
   // CreateUser creates a new user.
-  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
   // UpdateUser updates a user.
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse) {}
   // DeleteUser deletes a user by ID.
   rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {}
+  // LegacyGetUser returns a user by ID.
+  rpc LegacyGetUser(GetUserRequest) returns (GetUserResponse) {
+    option deprecated = true;
+  }
+  // Echo returns the request. Its message names do not follow the method
+  // name.
+  rpc Echo(EchoMessage) returns (EchoMessage) {}
 }
 
 message GetUserRequest {
@@ -41,6 +50,10 @@ message DeleteUserRequest {
 }
 
 message DeleteUserResponse {}
+
+message EchoMessage {
+  string text = 1;
+}
 
 service OwnerService {
   rpc GetOwner(GetOwnerRequest) returns (GetOwnerResponse) {}

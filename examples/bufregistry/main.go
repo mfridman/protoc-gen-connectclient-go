@@ -6,13 +6,14 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/mfridman/protoc-gen-connectclient-go/connectclient"
 	ownerv1 "github.com/mfridman/protoc-gen-connectclient-go/examples/bufregistry/gen/buf/registry/owner/v1"
+	"github.com/mfridman/protoc-gen-connectclient-go/examples/bufregistry/gen/buf/registry/owner/v1/ownerv1client"
 )
 
 var (
@@ -23,7 +24,7 @@ var (
 // Try running this with a BUF_TOKEN environment variable set to a valid token.
 //
 //  1. Run make examples
-// 	2. Run this program: BUF_TOKEN=<token> go run ./examples/bufregistry <username>
+//  2. Run this program from the examples directory: BUF_TOKEN=<token> go run ./bufregistry <username>
 
 func main() {
 	log.SetFlags(0)
@@ -44,13 +45,10 @@ func main() {
 		}
 	}
 
-	client := ownerv1.NewClient(
+	client := ownerv1client.NewClient(connectclient.New(
 		"https://"+remote,
-		ownerv1.WithModifyRequest(func(r *http.Request) error {
-			r.Header.Set("Authorization", "Bearer "+token)
-			return nil
-		}),
-	)
+		connectclient.WithHeader("Authorization", "Bearer "+token),
+	))
 	resp, err := client.UserService.GetUsers(context.Background(), &ownerv1.GetUsersRequest{
 		UserRefs: []*ownerv1.UserRef{
 			{
@@ -63,11 +61,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if len(resp.Users) == 0 {
+	if len(resp.GetUsers()) == 0 {
 		log.Fatal("no users found")
 	}
-	user := resp.Users[0]
-	log.Println("Response:", user.Name, "created on", user.CreateTime.AsTime().Format(time.DateTime))
+	user := resp.GetUsers()[0]
+	log.Println("Response:", user.GetName(), "created on", user.GetCreateTime().AsTime().Format(time.DateTime))
 }
 
 func parseNetrc(machineName string) (string, error) {

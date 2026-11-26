@@ -6,13 +6,14 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/mfridman/protoc-gen-connectclient-go/connectclient"
 	registryv1alpha1 "github.com/mfridman/protoc-gen-connectclient-go/examples/bufapi/gen/buf/alpha/registry/v1alpha1"
+	"github.com/mfridman/protoc-gen-connectclient-go/examples/bufapi/gen/buf/alpha/registry/v1alpha1/registryv1alpha1client"
 )
 
 var (
@@ -23,7 +24,7 @@ var (
 // Try running this with a BUF_TOKEN environment variable set to a valid token.
 //
 //  1. Run make examples
-// 	2. Run this program: BUF_TOKEN=<token> go run ./examples/bufapi
+//  2. Run this program from the examples directory: BUF_TOKEN=<token> go run ./bufapi
 
 func main() {
 	log.SetFlags(0)
@@ -39,18 +40,15 @@ func main() {
 		}
 	}
 
-	client := registryv1alpha1.NewClient(
+	client := registryv1alpha1client.NewClient(connectclient.New(
 		"https://"+remote,
-		registryv1alpha1.WithModifyRequest(func(r *http.Request) error {
-			r.Header.Set("Authorization", "Bearer "+token)
-			return nil
-		}),
-	)
+		connectclient.WithHeader("Authorization", "Bearer "+token),
+	))
 	resp, err := client.AuthnService.GetCurrentUser(context.Background(), &registryv1alpha1.GetCurrentUserRequest{})
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Response:", resp.User.Username, "created on", resp.User.CreateTime.AsTime().Format(time.DateTime))
+	log.Println("Response:", resp.GetUser().GetUsername(), "created on", resp.GetUser().GetCreateTime().AsTime().Format(time.DateTime))
 }
 
 func parseNetrc(machineName string) (string, error) {

@@ -1,56 +1,49 @@
 # examples
 
-This directory contains a few examples of how to use the `protoc-gen-connectclient-go` plugin. We'll
-use the [eliza](#eliza) client as an example. The same steps apply to any other example, just change
-the name of the example.
+This directory has examples of the code that `protoc-gen-connectclient-go` generates. It is a separate Go module, so the examples do not add dependencies to the main module.
 
-## Eliza
+| Example | Service | Notes |
+|---|---|---|
+| [eliza](eliza/main.go) | [buf.build/connectrpc/eliza](https://buf.build/connectrpc/eliza) on `demo.connectrpc.com` | No account needed. |
+| [bufapi](bufapi/main.go) | The Buf API, `AuthnService` | Needs a Buf token. |
+| [bufregistry](bufregistry/main.go) | The Buf registry API, `UserService` | Needs a Buf token. |
 
-See the [eliza/buf.gen.yaml](eliza/buf.gen.yaml) file for an example of how to use this plugin with
-`buf` for code generation.
+## Generate the code
 
-Assming you have:
-
-1. `buf` installed
-2. In the root of the repository
-
-Run:
+The generated code is not committed. From the root of the repository, run:
 
 ```shell
 make examples
 ```
 
-Under the hood, this will run:
+This builds the plugin and runs `buf generate` with each example's `buf.gen.yaml`. For example, [eliza/buf.gen.yaml](eliza/buf.gen.yaml) generates the client for the Eliza service.
+
+## Run an example
+
+From this directory, run:
 
 ```shell
-buf generate buf.build/connectrpc/eliza --template ./examples/eliza/buf.gen.yaml --include-imports
+go run ./eliza
 ```
 
-This will generate the client Go code for the `eliza` service in the
-[buf.build/connectrpc/eliza](https://buf.build/connectrpc/eliza) module.
+The output is similar to:
 
-In the [eliza/main.go](eliza/main.go) file you can see an example of how to use the generated client
-code. Here's a snippet:
+```
+Response: Hello...I'm glad you could drop by today.
+```
+
+The client code is short:
 
 ```go
-client := elizav1.NewClient("https://demo.connectrpc.com")
+client := elizav1client.NewClient(connectclient.New("https://demo.connectrpc.com"))
 resp, err := client.ElizaService.Say(context.Background(), &elizav1.SayRequest{
 	Sentence: "Hello",
 })
-if err != nil {
-	log.Fatal(err)
-}
-log.Println("Response:", resp.Sentence)
 ```
 
-And if you run the example:
+To run the Buf examples, set `BUF_TOKEN` to a valid token:
 
 ```shell
-go run ./examples/eliza
-```
-
-You should see the response from the Eliza service.
-
-```
-Response: Hello there...how are you today?
+BUF_TOKEN=<token> go run ./bufapi
+BUF_TOKEN=<token> go run ./bufregistry <username>
 ```

@@ -1,18 +1,24 @@
-version: v1
+version: v2
+
+clean: true
+
+inputs:
+  - directory: internal/proto
 
 managed:
   enabled: true
-  go_package_prefix:
-    default: github.com/mfridman/protoc-gen-connectclient-go/internal/testdata/gen
+  override:
+    - file_option: go_package_prefix
+      value: github.com/mfridman/protoc-gen-connectclient-go/internal/testdata/gen
 
 plugins:
-  - plugin: buf.build/protocolbuffers/go
+  - local: [go, tool, protoc-gen-go]
     out: internal/testdata/gen
-    opt:
-      - paths=source_relative
-  - plugin: connectclient-go
-    path: ./build/protoc-gen-connectclient-go
+    opt: paths=source_relative
+  # Stock connect-go v2 code, used only for the servers in tests.
+  - local: [go, tool, protoc-gen-connect-go]
     out: internal/testdata/gen
-    opt:
-      - paths=source_relative
-      - separate_packages=true
+    opt: paths=source_relative
+  - local: ./build/protoc-gen-connectclient-go
+    out: internal/testdata/gen
+    opt: paths=source_relative
