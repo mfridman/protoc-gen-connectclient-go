@@ -1,0 +1,24 @@
+version: v2
+
+clean: true
+
+inputs:
+  - git_repo: https://github.com/connectrpc/conformance.git
+    tag: v1.0.7
+    subdir: proto
+    paths:
+      - connectrpc/conformance/v1
+
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/mfridman/protoc-gen-connectclient-go/internal/conformance/gen
+
+plugins:
+  - local: [go, tool, protoc-gen-go]
+    out: gen
+    opt: paths=source_relative
+  - local: ../../build/protoc-gen-connectclient-go
+    out: gen
+    opt: paths=source_relative
