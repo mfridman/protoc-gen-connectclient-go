@@ -1,11 +1,11 @@
 # Binary size
 
-Bytes added to a program that already uses `net/http`, Protobuf, and `encoding/json` (linux/arm64, `CGO_ENABLED=0`, Go 1.26 and 1.27):
+Bytes added to a program that already uses `net/http`, Protobuf, and `encoding/json` (linux/arm64, `CGO_ENABLED=0`):
 
-| Client | Stripped | Unstripped |
-|---|---|---|
-| connect-go v2 with `connecthttp` | +768 KiB | +1,088 KiB |
-| **protoc-gen-connectclient-go** | **under 64 KiB** | **+10 KiB** |
+| Client | Go 1.27, stripped | Go 1.27, unstripped | Go 1.26, stripped | Go 1.26, unstripped |
+|---|---|---|---|---|
+| connect-go v2 with `connecthttp` | +768 KiB | +1,088 KiB | +768 KiB | +1,062 KiB |
+| **protoc-gen-connectclient-go** | **under 64 KiB** | **+13 KiB** | **+64 KiB** | **+78 KiB** |
 
 Stripped sizes change in 64 KiB steps. [`internal/integration/sizetest`](../internal/integration/sizetest) measures this on every test run, and fails if a generated client grows past 128 KiB.
 

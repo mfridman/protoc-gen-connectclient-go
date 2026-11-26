@@ -8,7 +8,7 @@ The connect-go client supports three protocols, two codecs, compression, and str
 
 This plugin generates one client per service, and one `Client` per package that bundles them. The generated code calls the service with a plain HTTP `POST` and binary Protobuf. It depends only on the standard library and `google.golang.org/protobuf`: there is no connect-go and no runtime package to import.
 
-A generated client adds almost nothing to a program that already uses `net/http`, Protobuf, and `encoding/json`. connect-go v2 adds 768 KiB, stripped. See [Binary size](docs/size.md).
+A generated client adds at most 64 KiB, stripped, to a program that already uses `net/http`, Protobuf, and `encoding/json`. connect-go v2 adds 768 KiB. See [Binary size](docs/size.md).
 
 ## Install
 

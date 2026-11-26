@@ -69,12 +69,18 @@ The client sends the context deadline to the server in the `Connect-Timeout-Ms` 
 
 ## Several packages
 
-Each Go package has its own `Client`. To call services from several packages, create one for each, with the same HTTP client and options:
+Each Go package has its own `Client` and its own `Option` type. To call services from several packages, create a client for each, and pass them the same HTTP client to share connections:
 
 ```go
-options := []ownerv1client.Option{ownerv1client.WithHeader("Authorization", "Bearer "+token)}
-ownerClient := ownerv1client.NewClient("https://buf.build", options...)
-moduleClient := modulev1client.NewClient("https://buf.build", modulev1client.WithHeader("Authorization", "Bearer "+token))
+httpClient := &http.Client{}
+ownerClient := ownerv1client.NewClient("https://buf.build",
+	ownerv1client.WithHTTPClient(httpClient),
+	ownerv1client.WithHeader("Authorization", "Bearer "+token),
+)
+moduleClient := modulev1client.NewClient("https://buf.build",
+	modulev1client.WithHTTPClient(httpClient),
+	modulev1client.WithHeader("Authorization", "Bearer "+token),
+)
 ```
 
 A program only links the packages that it imports.
@@ -88,6 +94,6 @@ A program only links the packages that it imports.
 | Binary Protobuf | JSON |
 | HTTP/1.1 and HTTP/2, with or without TLS | Connect GET requests |
 | gzip responses, decompressed by `net/http` | Compressed requests |
-| Deadlines, error codes and details, hooks | Interceptors and retries (use an `http.RoundTripper`) |
+| Deadlines, error codes and details, hooks | Interceptors that change messages |
 
-If you need something from the right column, use [connect-go](https://github.com/connectrpc/connect-go). Both work with the same server.
+For retries, use an `http.RoundTripper`. For anything else in the right column, use [connect-go](https://github.com/connectrpc/connect-go). Both work with the same server.
