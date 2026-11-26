@@ -1,4 +1,4 @@
-# Features of the connectclient transport. The runner tests every
+# Features of the generated client. The runner tests every
 # combination of these with the reference server.
 features:
   versions:

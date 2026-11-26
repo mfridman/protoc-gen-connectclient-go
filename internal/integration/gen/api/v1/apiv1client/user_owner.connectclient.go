@@ -9,13 +9,6 @@ import (
 	v1 "github.com/mfridman/protoc-gen-connectclient-go/internal/integration/gen/api/v1"
 )
 
-const (
-	// UserServiceName is the fully-qualified name of the UserService service.
-	UserServiceName = "api.v1.UserService"
-	// OwnerServiceName is the fully-qualified name of the OwnerService service.
-	OwnerServiceName = "api.v1.OwnerService"
-)
-
 // These constants are the procedure names of the unary RPCs in this file. They are the paths of the
 // HTTP requests.
 const (
@@ -38,12 +31,6 @@ const (
 // UserServiceClient is a client for the api.v1.UserService service.
 type UserServiceClient struct {
 	conn *conn
-}
-
-// NewUserServiceClient returns a client for the api.v1.UserService service at baseURL, for example
-// "https://api.example.com". To call several services, use NewClient.
-func NewUserServiceClient(baseURL string, options ...Option) *UserServiceClient {
-	return &UserServiceClient{conn: newConn(baseURL, options)}
 }
 
 // GetUser returns a user by ID.
@@ -106,12 +93,6 @@ func (c *UserServiceClient) Echo(ctx context.Context, req *v1.EchoMessage) (*v1.
 // OwnerServiceClient is a client for the api.v1.OwnerService service.
 type OwnerServiceClient struct {
 	conn *conn
-}
-
-// NewOwnerServiceClient returns a client for the api.v1.OwnerService service at baseURL, for
-// example "https://api.example.com". To call several services, use NewClient.
-func NewOwnerServiceClient(baseURL string, options ...Option) *OwnerServiceClient {
-	return &OwnerServiceClient{conn: newConn(baseURL, options)}
 }
 
 func (c *OwnerServiceClient) GetOwner(ctx context.Context, req *v1.GetOwnerRequest) (*v1.GetOwnerResponse, error) {

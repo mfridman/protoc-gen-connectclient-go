@@ -23,11 +23,6 @@ import (
 	v1 "github.com/mfridman/protoc-gen-connectclient-go/examples/eliza/gen/connectrpc/eliza/v1"
 )
 
-const (
-	// ElizaServiceName is the fully-qualified name of the ElizaService service.
-	ElizaServiceName = "connectrpc.eliza.v1.ElizaService"
-)
-
 // These constants are the procedure names of the unary RPCs in this file. They are the paths of the
 // HTTP requests.
 const (
@@ -40,12 +35,6 @@ const (
 // Streaming RPCs are not generated: Converse, Introduce.
 type ElizaServiceClient struct {
 	conn *conn
-}
-
-// NewElizaServiceClient returns a client for the connectrpc.eliza.v1.ElizaService service at
-// baseURL, for example "https://api.example.com". To call several services, use NewClient.
-func NewElizaServiceClient(baseURL string, options ...Option) *ElizaServiceClient {
-	return &ElizaServiceClient{conn: newConn(baseURL, options)}
 }
 
 // Say is a unary RPC. Eliza responds to the prompt with a single sentence.

@@ -38,8 +38,7 @@ func TestCalls(t *testing.T) {
 	owner, err := client.OwnerService.GetOwner(t.Context(), &apiv1.GetOwnerRequest{Id: "7"})
 	requireNoError(t, err)
 	requireEqual(t, owner.GetName(), "owner 7")
-	repository, err := apiv1client.NewRepositoryServiceClient(newServer(t).URL).
-		GetRepository(t.Context(), &apiv1.GetRepositoryRequest{Name: "goose"})
+	repository, err := client.RepositoryService.GetRepository(t.Context(), &apiv1.GetRepositoryRequest{Name: "goose"})
 	requireNoError(t, err)
 	requireEqual(t, repository.GetRepository().GetName(), "goose")
 	// A service from another package, with messages from google.protobuf.
@@ -96,6 +95,34 @@ func TestHeaders(t *testing.T) {
 	user, err := client.UserService.GetUser(t.Context(), &apiv1.GetUserRequest{Id: "headers"})
 	requireNoError(t, err)
 	requireEqual(t, user.GetName(), "X-Client=generated User-Agent=connectclient-go")
+}
+
+func TestHook(t *testing.T) {
+	t.Parallel()
+	var procedure, contentType string
+	var gotErr error
+	client := apiv1client.NewClient(newServer(t).URL, apiv1client.WithHook(
+		func(req *http.Request) (func(*http.Response, error), error) {
+			req.Header.Set("X-Client", "hook")
+			return func(res *http.Response, err error) {
+				procedure, gotErr = req.URL.Path, err
+				if res != nil {
+					contentType = res.Header.Get("Content-Type")
+				}
+			}, nil
+		},
+	))
+	user, err := client.UserService.GetUser(t.Context(), &apiv1.GetUserRequest{Id: "headers"})
+	requireNoError(t, err)
+	requireEqual(t, user.GetName(), "X-Client=hook User-Agent=connectclient-go")
+	requireEqual(t, procedure, apiv1client.UserServiceGetUserProcedure)
+	requireEqual(t, contentType, "application/proto")
+	requireEqual(t, gotErr, nil)
+
+	_, err = client.UserService.GetUser(t.Context(), &apiv1.GetUserRequest{Id: "missing"})
+	checkCode(t, err, apiv1client.CodeNotFound)
+	checkCode(t, gotErr, apiv1client.CodeNotFound)
+	requireEqual(t, contentType, "application/json")
 }
 
 func TestGzipResponse(t *testing.T) {

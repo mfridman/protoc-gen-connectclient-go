@@ -9,11 +9,6 @@ import (
 	v1 "github.com/mfridman/protoc-gen-connectclient-go/internal/integration/gen/api/v1"
 )
 
-const (
-	// RepositoryServiceName is the fully-qualified name of the RepositoryService service.
-	RepositoryServiceName = "api.v1.RepositoryService"
-)
-
 // These constants are the procedure names of the unary RPCs in this file. They are the paths of the
 // HTTP requests.
 const (
@@ -27,12 +22,6 @@ const (
 // Streaming RPCs are not generated: WatchRepository.
 type RepositoryServiceClient struct {
 	conn *conn
-}
-
-// NewRepositoryServiceClient returns a client for the api.v1.RepositoryService service at baseURL,
-// for example "https://api.example.com". To call several services, use NewClient.
-func NewRepositoryServiceClient(baseURL string, options ...Option) *RepositoryServiceClient {
-	return &RepositoryServiceClient{conn: newConn(baseURL, options)}
 }
 
 // GetRepository returns the repository information for the given repository.

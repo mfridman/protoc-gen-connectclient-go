@@ -52,6 +52,18 @@ func TestCall(t *testing.T) {
 	requireEqual(t, got, "echo hello")
 }
 
+func TestEmptyMessageHasContentLength(t *testing.T) {
+	t.Parallel()
+	// An empty message must not be sent chunked: a server that does not read
+	// the body could not notice a canceled call.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeProto(w, wrapperspb.String(fmt.Sprintf("%d %v", r.ContentLength, r.TransferEncoding)))
+	}))
+	t.Cleanup(server.Close)
+	got := callString(t, newConn(server.URL, nil), t.Context(), "")
+	requireEqual(t, got, "0 []")
+}
+
 func TestHeaders(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -156,6 +168,7 @@ func TestErrorFromHTTPStatus(t *testing.T) {
 		{name: "teapot", status: http.StatusTeapot, wantCode: CodeUnknown},
 		{name: "invalid_json", status: http.StatusInternalServerError, contentType: "application/json", body: "{", wantCode: CodeUnknown, wantMessage: "500 Internal Server Error"},
 		{name: "unknown_code", status: http.StatusServiceUnavailable, contentType: "application/json", body: `{"code":"bogus","message":"m"}`, wantCode: CodeUnavailable, wantMessage: "m"},
+		{name: "gateway_json", status: http.StatusBadGateway, contentType: "application/json", body: `{"error":"upstream"}`, wantCode: CodeUnavailable, wantMessage: "502 Bad Gateway"},
 		{name: "json_charset", status: http.StatusConflict, contentType: "application/json; charset=utf-8", body: `{"code":"aborted","message":"m"}`, wantCode: CodeAborted, wantMessage: "m"},
 		{name: "bad_detail", status: http.StatusConflict, contentType: "application/json", body: `{"code":"aborted","message":"m","details":[{"type":"x","value":"!!!"}]}`, wantCode: CodeAborted, wantMessage: "m"},
 	}
@@ -371,45 +384,151 @@ func TestConcurrentCalls(t *testing.T) {
 	}
 }
 
-func TestAfterCall(t *testing.T) {
+func TestHook(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if readString(r) == "fail" {
+		value := readString(r)
+		if value == "fail" {
 			http.Error(w, "down", http.StatusServiceUnavailable)
 			return
 		}
-		writeProto(w, wrapperspb.String("ok"))
+		w.Header().Set("X-Server-Request-Id", "server-1")
+		writeProto(w, wrapperspb.String(value+" "+r.Header.Get("X-Request-Id")+" "+r.Header.Get("Content-Type")))
 	}))
 	t.Cleanup(server.Close)
 	type contextKey struct{}
-	var calls []string
-	hook := func(ctx context.Context, err error) {
-		requestID, _ := ctx.Value(contextKey{}).(string)
-		calls = append(calls, fmt.Sprintf("%s %v", requestID, err))
+	var events []string
+	hook := func(name string) func(*http.Request) (func(*http.Response, error), error) {
+		return func(req *http.Request) (func(*http.Response, error), error) {
+			requestID, _ := req.Context().Value(contextKey{}).(string)
+			events = append(events, "before "+name+" "+req.URL.Path)
+			req.Header.Set("X-Request-Id", requestID)
+			// Hooks cannot change protocol headers or drain the body.
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Accept-Encoding", "br")
+			_, _ = io.ReadAll(req.Body)
+			return func(res *http.Response, err error) {
+				status, serverID := 0, ""
+				if res != nil {
+					status, serverID = res.StatusCode, res.Header.Get("X-Server-Request-Id")
+					if data, readErr := io.ReadAll(res.Body); readErr != nil || len(data) != 0 {
+						t.Errorf("response body: %q, %v", data, readErr)
+					}
+				}
+				procedure := ""
+				if callError, ok := errors.AsType[*Error](err); ok {
+					procedure = callError.Procedure
+				}
+				events = append(events, fmt.Sprintf("done %s %d %s %v %s", name, status, serverID, err, procedure))
+			}, nil
+		}
 	}
-	conn := newConn(server.URL, []Option{WithAfterCall(hook), WithAfterCall(hook)})
+	conn := newConn(server.URL, []Option{WithHook(hook("a")), WithHook(hook("b"))})
 	ctx := context.WithValue(t.Context(), contextKey{}, "request-1")
-	requireNoError(t, conn.call(ctx, testProcedure, wrapperspb.String("hello"), &wrapperspb.StringValue{}))
+
+	res := &wrapperspb.StringValue{}
+	requireNoError(t, conn.call(ctx, testProcedure, wrapperspb.String("hello"), res))
+	requireEqual(t, res.GetValue(), "hello request-1 application/proto")
 	err := conn.call(ctx, testProcedure, wrapperspb.String("fail"), &wrapperspb.StringValue{})
-	callError := requireCode(t, err, CodeUnavailable)
-	requireEqual(t, callError.Procedure, testProcedure)
-	requireEqual(t, err.Error(), "unavailable: 503 Service Unavailable")
+	checkCode(t, err, CodeUnavailable)
 	want := []string{
-		"request-1 <nil>",
-		"request-1 <nil>",
-		"request-1 unavailable: 503 Service Unavailable",
-		"request-1 unavailable: 503 Service Unavailable",
+		"before a " + testProcedure,
+		"before b " + testProcedure,
+		"done b 200 server-1 <nil> ",
+		"done a 200 server-1 <nil> ",
+		"before a " + testProcedure,
+		"before b " + testProcedure,
+		"done b 503  unavailable: 503 Service Unavailable " + testProcedure,
+		"done a 503  unavailable: 503 Service Unavailable " + testProcedure,
 	}
-	requireEqual(t, strings.Join(calls, "\n"), strings.Join(want, "\n"))
+	requireEqual(t, strings.Join(events, "\n"), strings.Join(want, "\n"))
 }
 
-func TestCodeOf(t *testing.T) {
+func TestHookStopsCall(t *testing.T) {
 	t.Parallel()
-	requireEqual(t, CodeOf(nil), Code(""))
-	requireEqual(t, CodeOf(errors.New("other")), CodeUnknown)
-	wrapped := fmt.Errorf("get user: %w", &Error{Code: CodeNotFound})
-	requireEqual(t, CodeOf(wrapped), CodeNotFound)
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		requests.Add(1)
+	}))
+	t.Cleanup(server.Close)
+	errNotSignedIn := errors.New("not signed in")
+	var doneErr error
+	conn := newConn(server.URL, []Option{
+		WithHook(func(*http.Request) (func(*http.Response, error), error) {
+			return func(res *http.Response, err error) {
+				if res != nil {
+					t.Error("got a response for a stopped call")
+				}
+				doneErr = err
+			}, nil
+		}),
+		WithHook(func(*http.Request) (func(*http.Response, error), error) {
+			// A done function returned with an error is ignored.
+			return func(*http.Response, error) { t.Error("ran the done function of a failed hook") }, errNotSignedIn
+		}),
+	})
+	err := conn.call(t.Context(), testProcedure, wrapperspb.String(""), &wrapperspb.StringValue{})
+	if err != errNotSignedIn { //nolint:errorlint // the error must be returned unchanged
+		t.Fatalf("got %v, want the hook's error unchanged", err)
+	}
+	requireEqual(t, doneErr, errNotSignedIn)
+	requireEqual(t, requests.Load(), int32(0))
+}
+
+func TestHookTransportError(t *testing.T) {
+	t.Parallel()
+	closed := httptest.NewServer(http.NotFoundHandler())
+	closedURL := closed.URL
+	closed.Close()
+	var gotResponse *http.Response
+	var gotErr error
+	conn := newConn(closedURL, []Option{WithHook(func(*http.Request) (func(*http.Response, error), error) {
+		return func(res *http.Response, err error) { gotResponse, gotErr = res, err }, nil
+	})})
+	err := conn.call(t.Context(), testProcedure, wrapperspb.String(""), &wrapperspb.StringValue{})
+	checkCode(t, err, CodeUnavailable)
+	if gotResponse != nil {
+		t.Fatal("got a response for a failed connection")
+	}
+	callError := requireCode(t, gotErr, CodeUnavailable)
+	requireEqual(t, callError.Procedure, testProcedure)
+
+	// An expired deadline also reaches the done functions.
+	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(-time.Second))
+	defer cancel()
+	err = conn.call(ctx, testProcedure, wrapperspb.String(""), &wrapperspb.StringValue{})
+	checkCode(t, err, CodeDeadlineExceeded)
+	checkCode(t, gotErr, CodeDeadlineExceeded)
+}
+
+func TestHookGzip(t *testing.T) {
+	t.Parallel()
+	// A hook that sets Accept-Encoding does not stop net/http from asking for
+	// and decompressing gzip.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, err := proto.Marshal(wrapperspb.String("compressed"))
+		if err != nil || !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			http.Error(w, "want gzip", http.StatusTeapot)
+			return
+		}
+		w.Header().Set("Content-Type", "application/proto")
+		w.Header().Set("Content-Encoding", "gzip")
+		gzipWriter := gzip.NewWriter(w)
+		defer func() { _ = gzipWriter.Close() }()
+		_, _ = gzipWriter.Write(data)
+	}))
+	t.Cleanup(server.Close)
+	conn := newConn(server.URL, []Option{WithHook(func(req *http.Request) (func(*http.Response, error), error) {
+		req.Header.Set("Accept-Encoding", "br")
+		return nil, nil
+	})})
+	requireEqual(t, callString(t, conn, t.Context(), ""), "compressed")
+}
+
+func TestErrorString(t *testing.T) {
+	t.Parallel()
 	requireEqual(t, (&Error{Code: CodeInternal}).Error(), "internal")
+	requireEqual(t, (&Error{Code: CodeNotFound, Message: "no user"}).Error(), "not_found: no user")
 }
 
 func TestErrorDetailUnknownType(t *testing.T) {

@@ -52,8 +52,8 @@ type Option interface {
 }
 
 // WithHTTPClient sets the HTTP client that sends requests. The default is
-// [http.DefaultClient]. Use an [http.RoundTripper] for auth, logging, or
-// retries, and a custom dialer to call a server on a Unix socket.
+// [http.DefaultClient]. Use an [http.RoundTripper] for retries, and a custom
+// dialer to call a server on a Unix socket.
 func WithHTTPClient(httpClient HTTPClient) Option {
 	return optionFunc(func(config *clientConfig) {
 		config.httpClient = httpClient
@@ -78,13 +78,22 @@ func WithReadMaxBytes(readMaxBytes int64) Option {
 	})
 }
 
-// WithAfterCall adds a hook that runs once after each call, with the context
-// of the call and its error, which is nil on success. Use it for logging or
-// metrics, and pass values such as a start time or a request ID in the
-// context. Hooks run in the order they are added.
-func WithAfterCall(hook func(ctx context.Context, err error)) Option {
+// WithHook adds a hook that runs before each call. It can change the HTTP
+// request, for example to add headers; the protocol headers are set after the
+// hooks run, so a hook cannot change them. Returning an error stops the call,
+// and the call returns that error unchanged.
+//
+// If the hook returns a done function, it runs after the call with the
+// response, or nil if none arrived, and the call's error, which is nil on
+// success. The response body is already read. Done functions run in the
+// reverse order of their hooks, like deferred calls.
+//
+// The URL path of the request ends with the procedure, for example
+// "/acme.v1.UserService/GetUser". The request context is the context of the
+// call; a hook cannot replace it.
+func WithHook(hook func(req *http.Request) (done func(res *http.Response, err error), err error)) Option {
 	return optionFunc(func(config *clientConfig) {
-		config.afterCall = append(config.afterCall, hook)
+		config.hooks = append(config.hooks, hook)
 	})
 }
 
@@ -111,9 +120,9 @@ const (
 	CodeUnauthenticated    Code = "unauthenticated"
 )
 
-// Error is the error that a failed call returns. Errors from the server have
-// the server's code, message, and details. Other errors, such as a failed
-// connection, wrap the cause.
+// Error is the error that a failed call returns, unless a hook stops the
+// call. Errors from the server have the server's code, message, and details.
+// Other errors, such as a failed connection, wrap the cause.
 type Error struct {
 	// Procedure is the procedure that failed, such as
 	// "/acme.v1.UserService/GetUser". Error does not include it.
@@ -133,18 +142,6 @@ func (e *Error) Error() string {
 
 func (e *Error) Unwrap() error {
 	return e.cause
-}
-
-// CodeOf returns the code of an *Error in the chain of err. It returns an
-// empty Code for a nil error, and [CodeUnknown] for other errors.
-func CodeOf(err error) Code {
-	if err == nil {
-		return ""
-	}
-	if callError, ok := errors.AsType[*Error](err); ok {
-		return callError.Code
-	}
-	return CodeUnknown
 }
 
 // ErrorDetail is a Protobuf message that the server attached to an error.
@@ -176,7 +173,8 @@ const (
 	contentTypeJSON     = "application/json"
 )
 
-// protocolHeaders are set by the client. WithHeader cannot override them.
+// protocolHeaders are set by the client. WithHeader and hooks cannot change
+// them.
 var protocolHeaders = map[string]struct{}{
 	"Accept-Encoding":          {},
 	"Connect-Protocol-Version": {},
@@ -190,7 +188,7 @@ type clientConfig struct {
 	httpClient   HTTPClient
 	header       http.Header
 	readMaxBytes int64
-	afterCall    []func(context.Context, error)
+	hooks        []func(*http.Request) (func(*http.Response, error), error)
 }
 
 type optionFunc func(*clientConfig)
@@ -222,38 +220,84 @@ func newConn(baseURL string, options []Option) *conn {
 }
 
 // call sends req to procedure, for example "/acme.v1.UserService/GetUser",
-// unmarshals the response into res, and runs the WithAfterCall hooks.
+// and unmarshals the response into res. It runs the WithHook hooks around the
+// HTTP request.
 func (c *conn) call(ctx context.Context, procedure string, req, res proto.Message) error {
-	err := c.send(ctx, procedure, req, res)
-	if callError, ok := errors.AsType[*Error](err); ok {
-		callError.Procedure = procedure
-	}
-	for _, hook := range c.config.afterCall {
-		hook(ctx, err)
-	}
-	return err
-}
-
-func (c *conn) send(ctx context.Context, procedure string, req, res proto.Message) error {
 	body, err := proto.Marshal(req)
 	if err != nil {
-		return &Error{Code: CodeInternal, Message: "marshal request: " + err.Error(), cause: err}
+		return &Error{Procedure: procedure, Code: CodeInternal, Message: "marshal request: " + err.Error(), cause: err}
 	}
-	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+procedure, bytes.NewReader(body))
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+procedure, http.NoBody)
 	if err != nil {
-		return &Error{Code: CodeInternal, Message: "create request: " + err.Error(), cause: err}
+		return &Error{Procedure: procedure, Code: CodeInternal, Message: "create request: " + err.Error(), cause: err}
 	}
 	for key, values := range c.config.header {
 		// Copy the values, so code that changes this request cannot change
 		// other requests.
 		httpRequest.Header[key] = slices.Clone(values)
 	}
+	setBody(httpRequest, body)
+	var dones []func(*http.Response, error)
+	for _, hook := range c.config.hooks {
+		done, err := hook(httpRequest)
+		if err != nil {
+			runDone(dones, nil, err)
+			return err
+		}
+		if done != nil {
+			dones = append(dones, done)
+		}
+	}
+	httpResponse, err := c.send(ctx, httpRequest, body, res)
+	if callError, ok := errors.AsType[*Error](err); ok {
+		callError.Procedure = procedure
+	}
+	if httpResponse != nil {
+		// The body is already read and closed.
+		httpResponse.Body = http.NoBody
+	}
+	runDone(dones, httpResponse, err)
+	return err
+}
+
+// runDone runs the done functions of hooks in reverse order.
+func runDone(dones []func(*http.Response, error), httpResponse *http.Response, err error) {
+	for index := len(dones) - 1; index >= 0; index-- {
+		dones[index](httpResponse, err)
+	}
+}
+
+// setBody sets body as the request body, again if a hook read or replaced it.
+func setBody(httpRequest *http.Request, body []byte) {
+	httpRequest.ContentLength = int64(len(body))
+	if len(body) == 0 {
+		// An empty message has no bytes. net/http treats a zero length with a
+		// body other than http.NoBody as unknown, and sends it chunked.
+		httpRequest.Body = http.NoBody
+		httpRequest.GetBody = func() (io.ReadCloser, error) { return http.NoBody, nil }
+		return
+	}
+	httpRequest.Body = io.NopCloser(bytes.NewReader(body))
+	httpRequest.GetBody = func() (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewReader(body)), nil
+	}
+}
+
+// send sets the protocol headers, sends the request, and reads the response.
+// It returns the response, if one arrived, and the call's error.
+func (c *conn) send(ctx context.Context, httpRequest *http.Request, body []byte, res proto.Message) (*http.Response, error) {
+	setBody(httpRequest, body)
+	for key := range protocolHeaders {
+		httpRequest.Header.Del(key)
+	}
 	httpRequest.Header.Set("Content-Type", contentTypeProto)
 	httpRequest.Header.Set("Connect-Protocol-Version", "1")
+	// The timeout is calculated after the hooks, so it counts the time they
+	// took, for example to refresh a token.
 	if deadline, ok := ctx.Deadline(); ok {
 		timeout := time.Until(deadline)
 		if timeout <= 0 {
-			return transportError(ctx, context.DeadlineExceeded)
+			return nil, transportError(ctx, context.DeadlineExceeded)
 		}
 		timeoutMs := (timeout + time.Millisecond - 1).Milliseconds() // round up
 		if timeoutMs <= maxTimeoutMs {
@@ -262,7 +306,7 @@ func (c *conn) send(ctx context.Context, procedure string, req, res proto.Messag
 	}
 	httpResponse, err := c.config.httpClient.Do(httpRequest)
 	if err != nil {
-		return transportError(ctx, err)
+		return nil, transportError(ctx, err)
 	}
 	defer func() { _ = httpResponse.Body.Close() }()
 	contentType, _, _ := strings.Cut(httpResponse.Header.Get("Content-Type"), ";")
@@ -270,11 +314,11 @@ func (c *conn) send(ctx context.Context, procedure string, req, res proto.Messag
 	if httpResponse.StatusCode != http.StatusOK && contentType != contentTypeJSON {
 		// Not a Connect error, for example an HTML page from a proxy. Do not
 		// read the body, so a large page still gets a code from its status.
-		return &Error{Code: codeFromHTTPStatus(httpResponse.StatusCode), Message: httpResponse.Status}
+		return httpResponse, &Error{Code: codeFromHTTPStatus(httpResponse.StatusCode), Message: httpResponse.Status}
 	}
 	if encoding := httpResponse.Header.Get("Content-Encoding"); encoding != "" && encoding != "identity" {
 		// net/http decompresses gzip itself and removes this header.
-		return &Error{Code: CodeInternal, Message: fmt.Sprintf("unsupported response compression %q", encoding)}
+		return httpResponse, &Error{Code: CodeInternal, Message: fmt.Sprintf("unsupported response compression %q", encoding)}
 	}
 	reader := io.Reader(httpResponse.Body)
 	if c.config.readMaxBytes > 0 {
@@ -282,16 +326,16 @@ func (c *conn) send(ctx context.Context, procedure string, req, res proto.Messag
 	}
 	data, err := io.ReadAll(reader)
 	if err != nil {
-		return transportError(ctx, err)
+		return httpResponse, transportError(ctx, err)
 	}
 	if c.config.readMaxBytes > 0 && int64(len(data)) > c.config.readMaxBytes {
-		return &Error{
+		return httpResponse, &Error{
 			Code:    CodeResourceExhausted,
 			Message: fmt.Sprintf("response is larger than the %d byte limit", c.config.readMaxBytes),
 		}
 	}
 	if httpResponse.StatusCode != http.StatusOK {
-		return errorFromJSON(httpResponse, data)
+		return httpResponse, errorFromJSON(httpResponse, data)
 	}
 	if contentType != contentTypeProto {
 		// A response that does not look like Connect gets CodeUnknown, and one
@@ -300,12 +344,12 @@ func (c *conn) send(ctx context.Context, procedure string, req, res proto.Messag
 		if !strings.HasPrefix(contentType, "application/") {
 			code = CodeUnknown
 		}
-		return &Error{Code: code, Message: fmt.Sprintf("invalid response content-type %q", contentType)}
+		return httpResponse, &Error{Code: code, Message: fmt.Sprintf("invalid response content-type %q", contentType)}
 	}
 	if err := proto.Unmarshal(data, res); err != nil {
-		return &Error{Code: CodeInvalidArgument, Message: "unmarshal response: " + err.Error(), cause: err}
+		return httpResponse, &Error{Code: CodeInvalidArgument, Message: "unmarshal response: " + err.Error(), cause: err}
 	}
-	return nil
+	return httpResponse, nil
 }
 
 // transportError converts an error from the HTTP client into an *Error that
@@ -344,6 +388,10 @@ func errorFromJSON(httpResponse *http.Response, data []byte) error {
 	callError := &Error{Code: codeFromHTTPStatus(httpResponse.StatusCode), Message: wire.Message}
 	if code := Code(wire.Code); code.valid() {
 		callError.Code = code
+	} else if callError.Message == "" {
+		// JSON that is not a Connect error, for example {"error": "..."}
+		// from a gateway.
+		callError.Message = httpResponse.Status
 	}
 	for _, detail := range wire.Details {
 		// The value is base64, with or without padding.

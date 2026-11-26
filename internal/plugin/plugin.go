@@ -60,7 +60,7 @@ func Generate(request *pluginpb.CodeGeneratorRequest) (*pluginpb.CodeGeneratorRe
 		uint64(pluginpb.CodeGeneratorResponse_FEATURE_SUPPORTS_EDITIONS)
 	protogenPlugin.SupportedEditionsMinimum = descriptorpb.Edition_EDITION_PROTO2
 	protogenPlugin.SupportedEditionsMaximum = descriptorpb.Edition_EDITION_2024
-	if err := generate(protogenPlugin, *packageSuffix, runtimeSource); err != nil {
+	if err := generate(protogenPlugin, *packageSuffix); err != nil {
 		protogenPlugin.Error(err)
 	}
 	return protogenPlugin.Response(), nil
@@ -82,14 +82,11 @@ type outputPackage struct {
 //go:embed clientruntime/clientruntime.go
 var runtimeSource string
 
-func generate(protogenPlugin *protogen.Plugin, packageSuffix, runtime string) error {
+func generate(protogenPlugin *protogen.Plugin, packageSuffix string) error {
 	if packageSuffix != "" && !token.IsIdentifier(packageSuffix) {
 		return fmt.Errorf("%s %q is not a valid Go identifier", packageSuffixFlagName, packageSuffix)
 	}
-	_, runtimeBody, ok := strings.Cut(runtime, runtimePackageClause)
-	if !ok || !strings.HasPrefix(strings.TrimSpace(runtimeBody), "import (") || !strings.Contains(runtimeBody, "\n)\n") {
-		return fmt.Errorf("runtime source must have %q followed by an import block", strings.TrimSpace(runtimePackageClause))
-	}
+	_, runtimeBody, _ := strings.Cut(runtimeSource, runtimePackageClause)
 	runtimeNames, err := declaredNames(runtimeBody)
 	if err != nil {
 		return err
@@ -199,11 +196,7 @@ func addMessageNames(declared map[string]struct{}, messages []*protogen.Message)
 func generatedNames(pkg *outputPackage) []string {
 	names := []string{"Client", "NewClient"}
 	for _, service := range pkg.services {
-		names = append(names,
-			serviceClientName(service),
-			"New"+serviceClientName(service),
-			serviceNameConstName(service),
-		)
+		names = append(names, serviceClientName(service))
 		for _, method := range unaryMethods(service) {
 			names = append(names, procedureConstName(method))
 		}
@@ -307,15 +300,6 @@ func generatePreamble(
 }
 
 func generateConstants(generatedFile *protogen.GeneratedFile, services []*protogen.Service) {
-	generatedFile.P("const (")
-	for _, service := range services {
-		constName := serviceNameConstName(service)
-		writeWrappedComment(generatedFile, constName, " is the fully-qualified name of the ",
-			service.Desc.Name(), " service.")
-		generatedFile.P(constName, ` = "`, service.Desc.FullName(), `"`)
-	}
-	generatedFile.P(")")
-	generatedFile.P()
 	writeWrappedComment(generatedFile, "These constants are the procedure names of the unary RPCs in this file. ",
 		"They are the paths of the HTTP requests.")
 	generatedFile.P("const (")
@@ -343,16 +327,6 @@ func generateServiceClient(generatedFile *protogen.GeneratedFile, service *proto
 	}
 	generatedFile.P("type ", clientType, " struct {")
 	generatedFile.P("conn *conn")
-	generatedFile.P("}")
-	generatedFile.P()
-	writeWrappedComment(generatedFile, "New", clientType, " returns a client for the ", service.Desc.FullName(),
-		" service at baseURL, for example \"https://api.example.com\". To call several services, use NewClient.")
-	if isDeprecatedService(service) {
-		generatedFile.P("//")
-		generatedFile.P("// Deprecated: do not use.")
-	}
-	generatedFile.P("func New", clientType, "(baseURL string, options ...Option) *", clientType, " {")
-	generatedFile.P("return &", clientType, "{conn: newConn(baseURL, options)}")
 	generatedFile.P("}")
 	generatedFile.P()
 	for _, method := range unaryMethods(service) {
@@ -446,10 +420,6 @@ func streamingMethodNames(service *protogen.Service) []string {
 		}
 	}
 	return names
-}
-
-func serviceNameConstName(service *protogen.Service) string {
-	return service.GoName + "Name"
 }
 
 func serviceClientName(service *protogen.Service) string {

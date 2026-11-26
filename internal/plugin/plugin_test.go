@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/pluginpb"
@@ -36,6 +35,11 @@ var testFiles = map[string]string{
 // internal/integration/gen. Run "make proto" to update them.
 func TestGolden(t *testing.T) {
 	t.Parallel()
+	if _, err := os.Stat(goldenDir); err != nil {
+		// The golden files are in a nested module, which is not part of the
+		// published module, for example when a user runs "go test all".
+		t.Skipf("golden files not found: %v", err)
+	}
 	response := generateTest(t, "paths=source_relative")
 	requireNoResponseError(t, response)
 	var wantFiles []string
@@ -176,20 +180,9 @@ func TestDeclaredNames(t *testing.T) {
 	}
 	names, err := declaredNames(body)
 	requireNoError(t, err)
-	for _, want := range []string{"Error", "ErrorDetail", "Option", "WithHTTPClient", "CodeOf", "CodeNotFound", "conn", "newConn"} {
+	for _, want := range []string{"Error", "ErrorDetail", "Option", "WithHTTPClient", "CodeNotFound", "conn", "newConn"} {
 		if !slices.Contains(names, want) {
 			t.Errorf("declared names %v do not contain %s", names, want)
-		}
-	}
-}
-
-func TestInvalidRuntimeSource(t *testing.T) {
-	t.Parallel()
-	protogenPlugin, err := protogen.Options{}.New(newTestRequest(t, "paths=source_relative"))
-	requireNoError(t, err)
-	for _, source := range []string{"package other\n", "package clientruntime\nfunc f() {}\n"} {
-		if err := generate(protogenPlugin, defaultPackageSuffix, source); err == nil {
-			t.Errorf("generate with runtime source %q: no error", source)
 		}
 	}
 }

@@ -1,6 +1,6 @@
-// Command protoc-gen-connectclient-go generates small, client-only Go code for
-// Connect services. The generated code is built on connect-go v2 and the
-// connectclient transport.
+// Command protoc-gen-connectclient-go generates small, self-contained Go
+// clients for Connect services. The generated code only imports the standard
+// library and google.golang.org/protobuf.
 package main
 
 import (

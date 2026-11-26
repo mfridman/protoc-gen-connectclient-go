@@ -103,7 +103,7 @@ func invokeRPC(
 	httpClients *httpClientCache,
 	request *conformancev1.ClientCompatRequest,
 ) (*conformancev1.ClientResponseResult, error) {
-	if request.GetService() != conformancev1client.ConformanceServiceName {
+	if request.GetService() != "connectrpc.conformance.v1.ConformanceService" {
 		return nil, fmt.Errorf("unknown service %q", request.GetService())
 	}
 	if request.GetProtocol() != conformancev1.Protocol_PROTOCOL_CONNECT ||

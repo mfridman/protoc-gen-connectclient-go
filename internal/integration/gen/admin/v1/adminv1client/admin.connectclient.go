@@ -12,11 +12,6 @@ import (
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
-const (
-	// AdminServiceName is the fully-qualified name of the AdminService service.
-	AdminServiceName = "admin.v1.AdminService"
-)
-
 // These constants are the procedure names of the unary RPCs in this file. They are the paths of the
 // HTTP requests.
 const (
@@ -29,14 +24,6 @@ const (
 // Deprecated: do not use.
 type AdminServiceClient struct {
 	conn *conn
-}
-
-// NewAdminServiceClient returns a client for the admin.v1.AdminService service at baseURL, for
-// example "https://api.example.com". To call several services, use NewClient.
-//
-// Deprecated: do not use.
-func NewAdminServiceClient(baseURL string, options ...Option) *AdminServiceClient {
-	return &AdminServiceClient{conn: newConn(baseURL, options)}
 }
 
 // Health returns an empty message when the server is healthy.

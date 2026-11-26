@@ -23,11 +23,6 @@ import (
 	v1 "github.com/mfridman/protoc-gen-connectclient-go/examples/bufregistry/gen/buf/registry/owner/v1"
 )
 
-const (
-	// UserServiceName is the fully-qualified name of the UserService service.
-	UserServiceName = "buf.registry.owner.v1.UserService"
-)
-
 // These constants are the procedure names of the unary RPCs in this file. They are the paths of the
 // HTTP requests.
 const (
@@ -48,12 +43,6 @@ const (
 // UserServiceClient is a client for the buf.registry.owner.v1.UserService service.
 type UserServiceClient struct {
 	conn *conn
-}
-
-// NewUserServiceClient returns a client for the buf.registry.owner.v1.UserService service at
-// baseURL, for example "https://api.example.com". To call several services, use NewClient.
-func NewUserServiceClient(baseURL string, options ...Option) *UserServiceClient {
-	return &UserServiceClient{conn: newConn(baseURL, options)}
 }
 
 // Get Users by id or name.

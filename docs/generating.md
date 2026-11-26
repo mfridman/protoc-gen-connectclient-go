@@ -33,7 +33,7 @@ Other ways also work:
 
 For the package `connectrpc.eliza.v1`, the plugin writes into the sub-package `elizav1client`:
 
-- `eliza.connectclient.go`: an `ElizaServiceClient` type with one method per unary RPC, plus the service name and procedure constants.
+- `eliza.connectclient.go`: an `ElizaServiceClient` type with one method per unary RPC, plus a constant with the procedure name of each RPC.
 - `elizav1client.connectclient.go`: a `Client` type with a field for each service in the package, and the code that sends the calls. The plugin writes the same code into every package, so the generated code needs no runtime package.
 
 The plugin does not generate streaming RPCs. The client type's doc comment lists the RPCs that it skipped.
@@ -46,4 +46,4 @@ Generate all the `.proto` files of a package in one run, as `buf generate` does 
 |---|---|---|
 | `package_suffix` | `client` | The suffix of the sub-package for the generated code. An empty value (`package_suffix=`) writes the code into the package of the `.pb.go` files. The option works as in `protoc-gen-connect-go`. |
 
-With an empty `package_suffix`, a generated name can be the same as a name that `protoc-gen-go` generates, for example for a message named `Client`. The plugin then stops with an error. The names `<Service>Client` and `New<Service>Client` are also the names that `protoc-gen-go-grpc` generates, so do not write both into the same package.
+With an empty `package_suffix`, a generated name can be the same as a name that `protoc-gen-go` generates, for example for a message named `Client`. The plugin then stops with an error. The name `<Service>Client` is also a name that `protoc-gen-go-grpc` generates, so do not write both into the same package.

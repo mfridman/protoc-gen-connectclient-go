@@ -39,12 +39,12 @@ jobs:
           setup_only: true
           # Pinned: other versions write a different internal/testdata/image.binpb.
           version: 1.75.0
-      - name: Check generated code
+      - name: Generate
         run: |
-          make proto
-          git diff --exit-code
-      - name: Conformance
-        run: make conformance
+          make generate
+          make conformance
+      - name: Check generated code
+        run: git diff --exit-code
 
   lint:
     runs-on: ubuntu-latest

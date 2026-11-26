@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -58,6 +59,9 @@ func main() {
 		},
 	})
 	if err != nil {
+		if callError, ok := errors.AsType[*ownerv1client.Error](err); ok && callError.Code == ownerv1client.CodeUnauthenticated {
+			log.Fatal("not signed in: set BUF_TOKEN to a valid token")
+		}
 		log.Fatal(err)
 	}
 	if len(resp.GetUsers()) == 0 {

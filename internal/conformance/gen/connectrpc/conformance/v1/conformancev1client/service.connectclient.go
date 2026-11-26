@@ -23,11 +23,6 @@ import (
 	v1 "github.com/mfridman/protoc-gen-connectclient-go/internal/conformance/gen/connectrpc/conformance/v1"
 )
 
-const (
-	// ConformanceServiceName is the fully-qualified name of the ConformanceService service.
-	ConformanceServiceName = "connectrpc.conformance.v1.ConformanceService"
-)
-
 // These constants are the procedure names of the unary RPCs in this file. They are the paths of the
 // HTTP requests.
 const (
@@ -47,13 +42,6 @@ const (
 // Streaming RPCs are not generated: ServerStream, ClientStream, BidiStream.
 type ConformanceServiceClient struct {
 	conn *conn
-}
-
-// NewConformanceServiceClient returns a client for the connectrpc.conformance.v1.ConformanceService
-// service at baseURL, for example "https://api.example.com". To call several services, use
-// NewClient.
-func NewConformanceServiceClient(baseURL string, options ...Option) *ConformanceServiceClient {
-	return &ConformanceServiceClient{conn: newConn(baseURL, options)}
 }
 
 // A unary operation. The request indicates the response headers and trailers
