@@ -1,4 +1,4 @@
-EXAMPLES := eliza bufregistry
+EXAMPLES := eliza
 
 .PHONY: build
 build:

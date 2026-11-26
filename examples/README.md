@@ -5,7 +5,6 @@ This directory has examples of the code that `protoc-gen-connectclient-go` gener
 | Example | Service | Notes |
 |---|---|---|
 | [eliza](eliza/main.go) | [buf.build/connectrpc/eliza](https://buf.build/connectrpc/eliza) on `demo.connectrpc.com` | No account needed. |
-| [bufregistry](bufregistry/main.go) | The Buf registry API, `UserService` | Needs a Buf token. Shows error handling. |
 
 ## Generate the code
 
@@ -38,10 +37,4 @@ client := elizav1client.NewClient("https://demo.connectrpc.com")
 resp, err := client.ElizaService.Say(context.Background(), &elizav1.SayRequest{
 	Sentence: "Hello",
 })
-```
-
-To run the Buf example, set `BUF_TOKEN` to a valid token:
-
-```shell
-BUF_TOKEN=<token> go run ./bufregistry <username>
 ```
