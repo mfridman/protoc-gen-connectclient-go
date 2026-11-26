@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -48,7 +49,8 @@ func WithHTTPClient(httpClient HTTPClient) Option {
 }
 
 // WithHeader adds a request header to every call, for example an
-// Authorization header, or a User-Agent header to replace the default.
+// Authorization header, or a User-Agent header to replace the default, such
+// as "connectclient-go/v0.2.0 (go1.27.4)".
 // Headers that the protocol uses, such as Content-Type, cannot be set.
 func WithHeader(name, value string) Option {
 	return optionFunc(func(config *clientConfig) {
@@ -153,6 +155,10 @@ func (d *ErrorDetail) Message() (proto.Message, error) {
 	return message, nil
 }
 
+// generatorVersion is the release of protoc-gen-connectclient-go that
+// generated this code, or "devel". It is part of the default User-Agent.
+const generatorVersion = "devel"
+
 const (
 	defaultReadMaxBytes = 4 << 20       // 4 MiB
 	maxTimeoutMs        = 9_999_999_999 // the protocol allows at most 10 digits
@@ -201,7 +207,7 @@ func newConn(baseURL string, options []Option) *conn {
 		config.header.Del(key)
 	}
 	if config.header.Get("User-Agent") == "" {
-		config.header.Set("User-Agent", "connectclient-go")
+		config.header.Set("User-Agent", "connectclient-go/"+generatorVersion+" ("+runtime.Version()+")")
 	}
 	return &conn{baseURL: strings.TrimSuffix(baseURL, "/"), config: config}
 }

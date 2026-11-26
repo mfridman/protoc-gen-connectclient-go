@@ -17,6 +17,8 @@ import (
 	"go/parser"
 	"go/token"
 	"path"
+	"regexp"
+	"runtime/debug"
 	"strings"
 	"unicode/utf8"
 
@@ -37,6 +39,7 @@ const (
 
 	contextPackage       = protogen.GoImportPath("context")
 	runtimePackageClause = "package clientruntime\n"
+	runtimeVersionLine   = `const generatorVersion = "devel"`
 
 	commentWidth = 97 // leave room for "// "
 
@@ -87,6 +90,8 @@ func generate(protogenPlugin *protogen.Plugin, packageSuffix string) error {
 		return fmt.Errorf("%s %q is not a valid Go identifier", packageSuffixFlagName, packageSuffix)
 	}
 	_, runtimeBody, _ := strings.Cut(runtimeSource, runtimePackageClause)
+	runtimeBody = strings.Replace(runtimeBody, runtimeVersionLine,
+		`const generatorVersion = "`+ReleaseVersion(buildVersion())+`"`, 1)
 	runtimeNames, err := declaredNames(runtimeBody)
 	if err != nil {
 		return err
@@ -202,6 +207,31 @@ func generatedNames(pkg *outputPackage) []string {
 		}
 	}
 	return names
+}
+
+// pseudoVersion matches the timestamp and commit at the end of a Go
+// pseudo-version, such as v0.1.3-0.20261126180726-8ff1922f1dec.
+var pseudoVersion = regexp.MustCompile(`\d{14}-[0-9a-f]{12}$`)
+
+// ReleaseVersion returns version if it is a released module version, such as
+// "v0.2.0", and "devel" otherwise. Generated code gets the version, so local
+// builds, which have a new pseudo-version for every commit, must not change
+// it.
+func ReleaseVersion(version string) string {
+	if !strings.HasPrefix(version, "v") || strings.Contains(version, "+") || pseudoVersion.MatchString(version) {
+		return "devel"
+	}
+	return version
+}
+
+// buildVersion returns the module version of the running program, such as
+// "v0.2.0" for go install, a pseudo-version for a local build, or "(devel)".
+func buildVersion() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ""
+	}
+	return info.Main.Version
 }
 
 // declaredNames returns the package-level names that source declares, after

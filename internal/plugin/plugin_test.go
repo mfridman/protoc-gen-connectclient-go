@@ -187,6 +187,33 @@ func TestDeclaredNames(t *testing.T) {
 	}
 }
 
+func TestReleaseVersion(t *testing.T) {
+	t.Parallel()
+	for version, want := range map[string]string{
+		"v0.2.0":                               "v0.2.0",
+		"v1.0.0-rc.1":                          "v1.0.0-rc.1",
+		"(devel)":                              "devel",
+		"":                                     "devel",
+		"v0.2.0+dirty":                         "devel",
+		"v0.1.3-0.20261126180726-8ff1922f1dec": "devel",
+		"v0.1.3-0.20261126180726-8ff1922f1dec+dirty": "devel",
+		"v0.0.0-20261126180726-8ff1922f1dec":         "devel",
+		"v1.0.0-rc.1.0.20261126180726-8ff1922f1dec":  "devel",
+	} {
+		if got := ReleaseVersion(version); got != want {
+			t.Errorf("ReleaseVersion(%q) = %q, want %q", version, got, want)
+		}
+	}
+}
+
+func TestRuntimeVersionLine(t *testing.T) {
+	t.Parallel()
+	// The plugin replaces this line with the release version.
+	if strings.Count(runtimeSource, runtimeVersionLine) != 1 {
+		t.Fatalf("runtime source must contain %q once", runtimeVersionLine)
+	}
+}
+
 func TestNoServices(t *testing.T) {
 	t.Parallel()
 	request := newTestRequest(t, "paths=source_relative")

@@ -9,7 +9,7 @@ Each generated package has its own copy of the client code, so the types below, 
 | Option | Description |
 |---|---|
 | `WithHTTPClient(httpClient)` | Sets the HTTP client. The default is `http.DefaultClient`. |
-| `WithHeader(name, value)` | Adds a request header to every call, for example `Authorization` or `User-Agent`. |
+| `WithHeader(name, value)` | Adds a request header to every call, for example `Authorization`, or `User-Agent` to replace the default, such as `connectclient-go/v0.2.0 (go1.27.4)`. |
 | `WithReadMaxBytes(n)` | Limits the size of a response. The default is 4 MiB. Zero removes the limit. |
 | `WithHook(hook)` | Runs `hook` before each call, and the function it returns after the call. See below. |
 

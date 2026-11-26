@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -94,7 +95,7 @@ func TestHeaders(t *testing.T) {
 	client := apiv1client.NewClient(newServer(t).URL, apiv1client.WithHeader("X-Client", "generated"))
 	user, err := client.UserService.GetUser(t.Context(), &apiv1.GetUserRequest{Id: "headers"})
 	requireNoError(t, err)
-	requireEqual(t, user.GetName(), "X-Client=generated User-Agent=connectclient-go")
+	requireEqual(t, user.GetName(), "X-Client=generated User-Agent=connectclient-go/devel ("+runtime.Version()+")")
 }
 
 func TestHook(t *testing.T) {
@@ -114,7 +115,7 @@ func TestHook(t *testing.T) {
 	))
 	user, err := client.UserService.GetUser(t.Context(), &apiv1.GetUserRequest{Id: "headers"})
 	requireNoError(t, err)
-	requireEqual(t, user.GetName(), "X-Client=hook User-Agent=connectclient-go")
+	requireEqual(t, user.GetName(), "X-Client=hook User-Agent=connectclient-go/devel ("+runtime.Version()+")")
 	requireEqual(t, procedure, apiv1client.UserServiceGetUserProcedure)
 	requireEqual(t, contentType, "application/proto")
 	requireEqual(t, gotErr, nil)
