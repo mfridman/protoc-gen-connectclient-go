@@ -2,18 +2,12 @@ module github.com/mfridman/protoc-gen-connectclient-go/internal/conformance
 
 go 1.27
 
-replace github.com/mfridman/protoc-gen-connectclient-go => ../..
-
 tool (
 	connectrpc.com/conformance/cmd/connectconformance
 	google.golang.org/protobuf/cmd/protoc-gen-go
 )
 
-require (
-	connectrpc.com/connect/v2 v2.0.2
-	github.com/mfridman/protoc-gen-connectclient-go v0.0.0-00010101000000-000000000000
-	google.golang.org/protobuf v1.36.12
-)
+require google.golang.org/protobuf v1.36.12
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250425153114-8976f5be98c1.1 // indirect
@@ -21,6 +15,7 @@ require (
 	buf.build/go/protoyaml v0.7.0 // indirect
 	cel.dev/expr v0.25.2 // indirect
 	connectrpc.com/conformance v1.0.7 // indirect
+	connectrpc.com/connect/v2 v2.0.2 // indirect
 	github.com/andybalholm/brotli v1.2.6 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.1 // indirect

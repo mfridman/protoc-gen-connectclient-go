@@ -19,10 +19,8 @@
 package ownerv1client
 
 import (
-	connect "connectrpc.com/connect/v2"
 	context "context"
 	v1 "github.com/mfridman/protoc-gen-connectclient-go/examples/bufregistry/gen/buf/registry/owner/v1"
-	sync "sync"
 )
 
 const (
@@ -31,7 +29,7 @@ const (
 )
 
 // These constants are the procedure names of the unary RPCs in this file. They are the paths of the
-// HTTP requests, and connect.Spec.Procedure at run time.
+// HTTP requests.
 const (
 	// UserServiceGetUsersProcedure is the procedure name of the UserService's GetUsers RPC.
 	UserServiceGetUsersProcedure = "/buf.registry.owner.v1.UserService/GetUsers"
@@ -47,115 +45,64 @@ const (
 	UserServiceDeleteUsersProcedure = "/buf.registry.owner.v1.UserService/DeleteUsers"
 )
 
-var (
-	userServiceGetUsersSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1.File_buf_registry_owner_v1_user_service_proto.Services().ByName("UserService").Methods().ByName("GetUsers"),
-			Procedure:        UserServiceGetUsersProcedure,
-			IdempotencyLevel: connect.IdempotencyNoSideEffects,
-		}
-	})
-	userServiceGetCurrentUserSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1.File_buf_registry_owner_v1_user_service_proto.Services().ByName("UserService").Methods().ByName("GetCurrentUser"),
-			Procedure:        UserServiceGetCurrentUserProcedure,
-			IdempotencyLevel: connect.IdempotencyNoSideEffects,
-		}
-	})
-	userServiceListUsersSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1.File_buf_registry_owner_v1_user_service_proto.Services().ByName("UserService").Methods().ByName("ListUsers"),
-			Procedure:        UserServiceListUsersProcedure,
-			IdempotencyLevel: connect.IdempotencyNoSideEffects,
-		}
-	})
-	userServiceCreateUsersSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1.File_buf_registry_owner_v1_user_service_proto.Services().ByName("UserService").Methods().ByName("CreateUsers"),
-			Procedure:        UserServiceCreateUsersProcedure,
-			IdempotencyLevel: connect.IdempotencyIdempotent,
-		}
-	})
-	userServiceUpdateUsersSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1.File_buf_registry_owner_v1_user_service_proto.Services().ByName("UserService").Methods().ByName("UpdateUsers"),
-			Procedure:        UserServiceUpdateUsersProcedure,
-			IdempotencyLevel: connect.IdempotencyIdempotent,
-		}
-	})
-	userServiceDeleteUsersSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1.File_buf_registry_owner_v1_user_service_proto.Services().ByName("UserService").Methods().ByName("DeleteUsers"),
-			Procedure:        UserServiceDeleteUsersProcedure,
-			IdempotencyLevel: connect.IdempotencyIdempotent,
-		}
-	})
-)
-
 // UserServiceClient is a client for the buf.registry.owner.v1.UserService service.
 type UserServiceClient struct {
-	client *connect.Client
+	conn *conn
 }
 
-// NewUserServiceClient returns a client for the buf.registry.owner.v1.UserService service. Service
-// clients may share one connect.Client.
-func NewUserServiceClient(client *connect.Client) *UserServiceClient {
-	return &UserServiceClient{client: client}
+// NewUserServiceClient returns a client for the buf.registry.owner.v1.UserService service at
+// baseURL, for example "https://api.example.com". To call several services, use NewClient.
+func NewUserServiceClient(baseURL string, options ...Option) *UserServiceClient {
+	return &UserServiceClient{conn: newConn(baseURL, options)}
 }
 
 // Get Users by id or name.
 func (c *UserServiceClient) GetUsers(ctx context.Context, req *v1.GetUsersRequest) (*v1.GetUsersResponse, error) {
-	var res v1.GetUsersResponse
-	if err := c.client.CallUnary(ctx, userServiceGetUsersSpec(), req, &res); err != nil {
+	res := new(v1.GetUsersResponse)
+	if err := c.conn.call(ctx, UserServiceGetUsersProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // Get the currently authenticated User.
 func (c *UserServiceClient) GetCurrentUser(ctx context.Context, req *v1.GetCurrentUserRequest) (*v1.GetCurrentUserResponse, error) {
-	var res v1.GetCurrentUserResponse
-	if err := c.client.CallUnary(ctx, userServiceGetCurrentUserSpec(), req, &res); err != nil {
+	res := new(v1.GetCurrentUserResponse)
+	if err := c.conn.call(ctx, UserServiceGetCurrentUserProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // List Users, usually by Organization.
 func (c *UserServiceClient) ListUsers(ctx context.Context, req *v1.ListUsersRequest) (*v1.ListUsersResponse, error) {
-	var res v1.ListUsersResponse
-	if err := c.client.CallUnary(ctx, userServiceListUsersSpec(), req, &res); err != nil {
+	res := new(v1.ListUsersResponse)
+	if err := c.conn.call(ctx, UserServiceListUsersProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // Create new Users.
 //
 // This operation is atomic. Either all Users are created or an error is returned.
 func (c *UserServiceClient) CreateUsers(ctx context.Context, req *v1.CreateUsersRequest) (*v1.CreateUsersResponse, error) {
-	var res v1.CreateUsersResponse
-	if err := c.client.CallUnary(ctx, userServiceCreateUsersSpec(), req, &res); err != nil {
+	res := new(v1.CreateUsersResponse)
+	if err := c.conn.call(ctx, UserServiceCreateUsersProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // Update existing Users.
 //
 // This operation is atomic. Either all Users are updated or an error is returned.
 func (c *UserServiceClient) UpdateUsers(ctx context.Context, req *v1.UpdateUsersRequest) (*v1.UpdateUsersResponse, error) {
-	var res v1.UpdateUsersResponse
-	if err := c.client.CallUnary(ctx, userServiceUpdateUsersSpec(), req, &res); err != nil {
+	res := new(v1.UpdateUsersResponse)
+	if err := c.conn.call(ctx, UserServiceUpdateUsersProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // Delete existing Users.
@@ -165,9 +112,9 @@ func (c *UserServiceClient) UpdateUsers(ctx context.Context, req *v1.UpdateUsers
 // duplicate UserRefs belonging to the same User, by id or name, are allowed, and
 // only one User will be deleted.
 func (c *UserServiceClient) DeleteUsers(ctx context.Context, req *v1.DeleteUsersRequest) (*v1.DeleteUsersResponse, error) {
-	var res v1.DeleteUsersResponse
-	if err := c.client.CallUnary(ctx, userServiceDeleteUsersSpec(), req, &res); err != nil {
+	res := new(v1.DeleteUsersResponse)
+	if err := c.conn.call(ctx, UserServiceDeleteUsersProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }

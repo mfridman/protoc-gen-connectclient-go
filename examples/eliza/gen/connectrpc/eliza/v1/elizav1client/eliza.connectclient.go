@@ -19,10 +19,8 @@
 package elizav1client
 
 import (
-	connect "connectrpc.com/connect/v2"
 	context "context"
 	v1 "github.com/mfridman/protoc-gen-connectclient-go/examples/eliza/gen/connectrpc/eliza/v1"
-	sync "sync"
 )
 
 const (
@@ -31,41 +29,30 @@ const (
 )
 
 // These constants are the procedure names of the unary RPCs in this file. They are the paths of the
-// HTTP requests, and connect.Spec.Procedure at run time.
+// HTTP requests.
 const (
 	// ElizaServiceSayProcedure is the procedure name of the ElizaService's Say RPC.
 	ElizaServiceSayProcedure = "/connectrpc.eliza.v1.ElizaService/Say"
-)
-
-var (
-	elizaServiceSaySpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1.File_connectrpc_eliza_v1_eliza_proto.Services().ByName("ElizaService").Methods().ByName("Say"),
-			Procedure:        ElizaServiceSayProcedure,
-			IdempotencyLevel: connect.IdempotencyNoSideEffects,
-		}
-	})
 )
 
 // ElizaServiceClient is a client for the connectrpc.eliza.v1.ElizaService service.
 //
 // Streaming RPCs are not generated: Converse, Introduce.
 type ElizaServiceClient struct {
-	client *connect.Client
+	conn *conn
 }
 
-// NewElizaServiceClient returns a client for the connectrpc.eliza.v1.ElizaService service. Service
-// clients may share one connect.Client.
-func NewElizaServiceClient(client *connect.Client) *ElizaServiceClient {
-	return &ElizaServiceClient{client: client}
+// NewElizaServiceClient returns a client for the connectrpc.eliza.v1.ElizaService service at
+// baseURL, for example "https://api.example.com". To call several services, use NewClient.
+func NewElizaServiceClient(baseURL string, options ...Option) *ElizaServiceClient {
+	return &ElizaServiceClient{conn: newConn(baseURL, options)}
 }
 
 // Say is a unary RPC. Eliza responds to the prompt with a single sentence.
 func (c *ElizaServiceClient) Say(ctx context.Context, req *v1.SayRequest) (*v1.SayResponse, error) {
-	var res v1.SayResponse
-	if err := c.client.CallUnary(ctx, elizaServiceSaySpec(), req, &res); err != nil {
+	res := new(v1.SayResponse)
+	if err := c.conn.call(ctx, ElizaServiceSayProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }

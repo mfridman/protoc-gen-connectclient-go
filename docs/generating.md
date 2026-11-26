@@ -22,9 +22,9 @@ plugins:
 
 ## Ways to run the plugin
 
-The examples use a [tool dependency](https://go.dev/doc/modules/managing-dependencies#tools), added with `go get -tool github.com/mfridman/protoc-gen-connectclient-go`. Then your `go.mod` pins the plugin and the `connectclient` package to the same version, and `go get -u` updates both.
+The examples use a [tool dependency](https://go.dev/doc/modules/managing-dependencies#tools), added with `go get -tool github.com/mfridman/protoc-gen-connectclient-go`. Then your `go.mod` pins the plugin version. The generated code does not import this module.
 
-Other ways also work. Use the same version as the `connectclient` package in your `go.mod`:
+Other ways also work:
 
 - **Install the binary:** run `go install github.com/mfridman/protoc-gen-connectclient-go@<version>`, then use `local: protoc-gen-connectclient-go`.
 - **Run with `go run`:** use `local: [go, run, github.com/mfridman/protoc-gen-connectclient-go@<version>]`.
@@ -34,7 +34,7 @@ Other ways also work. Use the same version as the `connectclient` package in you
 For the package `connectrpc.eliza.v1`, the plugin writes into the sub-package `elizav1client`:
 
 - `eliza.connectclient.go`: an `ElizaServiceClient` type with one method per unary RPC, plus the service name and procedure constants.
-- `elizav1client.connectclient.go`: a `Client` type with a field for each service in the package.
+- `elizav1client.connectclient.go`: a `Client` type with a field for each service in the package, and the code that sends the calls. The plugin writes the same code into every package, so the generated code needs no runtime package.
 
 The plugin does not generate streaming RPCs. The client type's doc comment lists the RPCs that it skipped.
 

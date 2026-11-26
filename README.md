@@ -1,15 +1,14 @@
 # protoc-gen-connectclient-go
 
-Small, client-only Go code for [Connect](https://connectrpc.com/) services, built on [connect-go v2](https://github.com/connectrpc/connect-go).
+Small, self-contained Go clients for [Connect](https://connectrpc.com/) services.
 
 ## Why
 
-The full connect-go client supports three protocols, two codecs, compression, and streaming. A program that only makes unary calls still links most of that code. This project links only what a unary Connect call needs:
+The connect-go client supports three protocols, two codecs, compression, and streaming. A program that only makes unary calls still links most of that code.
 
-- **`protoc-gen-connectclient-go`** generates one client per service, and one `Client` per package that bundles them.
-- **`connectclient`** is a small `connect.Transport` for unary calls with the Connect protocol and binary Protobuf.
+This plugin generates one client per service, and one `Client` per package that bundles them. The generated code calls the service with a plain HTTP `POST` and binary Protobuf. It depends only on the standard library and `google.golang.org/protobuf`: there is no connect-go and no runtime package to import.
 
-The result adds about 90% less to a binary than connect-go v2 with `connecthttp`: 128 KiB instead of 1,280 KiB, stripped, with Go 1.27. See [Binary size](docs/size.md).
+A generated client adds almost nothing to a program that already uses `net/http`, Protobuf, and `encoding/json`. connect-go v2 adds 768 KiB, stripped. See [Binary size](docs/size.md).
 
 ## Install
 
@@ -17,7 +16,7 @@ The result adds about 90% less to a binary than connect-go v2 with `connecthttp`
 go get -tool github.com/mfridman/protoc-gen-connectclient-go
 ```
 
-This pins the plugin and the `connectclient` package to the same version in your `go.mod`. Requires Go 1.26 or newer.
+Requires Go 1.26 or newer.
 
 ## Use
 
@@ -33,14 +32,14 @@ plugins:
     opt: paths=source_relative
 ```
 
-Run `buf generate`, then `go mod tidy` to add the modules that the generated code imports. Then call the service:
+Then call the service:
 
 ```go
-client := elizav1client.NewClient(connectclient.New("https://demo.connectrpc.com"))
+client := elizav1client.NewClient("https://demo.connectrpc.com")
 resp, err := client.ElizaService.Say(ctx, &elizav1.SayRequest{Sentence: "Hello"})
 ```
 
-Errors are `*connect.Error` values, and interceptors, deadlines, and headers work as in connect-go.
+Deadlines go to the server, and errors carry the Connect code, message, and details.
 
 ## Docs
 

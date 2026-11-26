@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 
-	"github.com/mfridman/buildversion"
 	"github.com/mfridman/protoc-gen-connectclient-go/internal/plugin"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/pluginpb"
@@ -32,7 +32,7 @@ func runMain(args []string) int {
 	if len(args) > 0 {
 		switch args[0] {
 		case "--version", "-version":
-			_, _ = fmt.Fprintln(os.Stdout, plugin.Name, buildversion.New())
+			_, _ = fmt.Fprintln(os.Stdout, plugin.Name, version())
 			return 0
 		case "--help", "-help", "-h":
 			_, _ = fmt.Fprint(os.Stdout, usage)
@@ -70,4 +70,14 @@ func run(stdin io.Reader, stdout io.Writer) error {
 		return fmt.Errorf("write response: %w", err)
 	}
 	return nil
+}
+
+// version returns the module version from the build information, such as
+// "v0.2.0" for go install, or a pseudo-version for a local build.
+func version() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok || info.Main.Version == "" || info.Main.Version == "(devel)" {
+		return "devel"
+	}
+	return info.Main.Version
 }

@@ -8,17 +8,19 @@ build:
 .PHONY: test
 test:
 	go test -race ./...
+	cd internal/integration && go test -race ./...
 	cd examples && go vet ./...
 
 .PHONY: lint
 lint:
 	go vet ./...
 	golangci-lint run ./...
+	cd internal/integration && golangci-lint run ./...
 	buf lint internal/proto
 
 .PHONY: proto
 proto: build
-	buf generate --template internal/proto/buf.gen.yaml
+	cd internal/integration && buf generate
 	buf build internal/proto --as-file-descriptor-set -o internal/testdata/image.binpb
 
 .PHONY: conformance

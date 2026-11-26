@@ -1,13 +1,17 @@
 package plugin
 
 import (
+	"go/parser"
+	"go/token"
 	gomaps "maps"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
+	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/pluginpb"
@@ -15,11 +19,12 @@ import (
 
 const (
 	testdataDir    = "../testdata"
-	testImportPath = "github.com/mfridman/protoc-gen-connectclient-go/internal/testdata/gen"
+	goldenDir      = "../integration/gen"
+	testImportPath = "github.com/mfridman/protoc-gen-connectclient-go/internal/integration/gen"
 )
 
 // testFiles are the .proto files in internal/proto, with the Go packages
-// that buf's managed mode gives them in internal/proto/buf.gen.yaml.
+// that buf's managed mode gives them in internal/integration/buf.gen.yaml.
 var testFiles = map[string]string{
 	"admin/v1/admin.proto":        testImportPath + "/admin/v1;adminv1",
 	"api/v1/repository.proto":     testImportPath + "/api/v1;apiv1",
@@ -28,18 +33,18 @@ var testFiles = map[string]string{
 }
 
 // TestGolden checks that the plugin generates the files committed in
-// internal/testdata/gen. Run "make proto" to update them.
+// internal/integration/gen. Run "make proto" to update them.
 func TestGolden(t *testing.T) {
 	t.Parallel()
 	response := generateTest(t, "paths=source_relative")
 	requireNoResponseError(t, response)
 	var wantFiles []string
-	err := filepath.WalkDir(filepath.Join(testdataDir, "gen"), func(path string, _ os.DirEntry, err error) error {
+	err := filepath.WalkDir(goldenDir, func(path string, _ os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if strings.HasSuffix(path, generatedFilenameExtension) {
-			relativePath, err := filepath.Rel(filepath.Join(testdataDir, "gen"), path)
+			relativePath, err := filepath.Rel(goldenDir, path)
 			if err != nil {
 				return err
 			}
@@ -51,7 +56,7 @@ func TestGolden(t *testing.T) {
 	var gotFiles []string
 	for _, file := range response.GetFile() {
 		gotFiles = append(gotFiles, file.GetName())
-		want, err := os.ReadFile(filepath.Join(testdataDir, "gen", filepath.FromSlash(file.GetName())))
+		want, err := os.ReadFile(filepath.Join(goldenDir, filepath.FromSlash(file.GetName())))
 		requireNoError(t, err)
 		if file.GetContent() != string(want) {
 			t.Errorf("%s differs from the committed file; run make proto\ngot:\n%s", file.GetName(), file.GetContent())
@@ -120,13 +125,11 @@ func TestContent(t *testing.T) {
 	requireNoResponseError(t, response)
 	got := responseFiles(response)
 	repository := got["api/v1/apiv1client/repository.connectclient.go"]
-	requireContains(t, repository, "IdempotencyLevel: connect.IdempotencyNoSideEffects,")
 	requireContains(t, repository, "// Streaming RPCs are not generated: WatchRepository.")
 	requireNotContains(t, repository, "WatchRepositoryProcedure")
 	requireNotContains(t, repository, "EventService")
-	requireContains(t, repository, `connect "connectrpc.com/connect/v2"`)
+	requireContains(t, repository, "if err := c.conn.call(ctx, RepositoryServiceGetRepositoryProcedure, req, res); err != nil {")
 	userOwner := got["api/v1/apiv1client/user_owner.connectclient.go"]
-	requireContains(t, userOwner, "IdempotencyLevel: connect.IdempotencyIdempotent,")
 	requireContains(t, userOwner, "// LegacyGetUser returns a user by ID.\n//\n// Deprecated: do not use.\nfunc (c *UserServiceClient) LegacyGetUser(")
 	requireContains(t, userOwner, "req *v1.EchoMessage) (*v1.EchoMessage, error)")
 	admin := got["admin/v1/adminv1client/admin.connectclient.go"]
@@ -138,6 +141,57 @@ func TestContent(t *testing.T) {
 	requireContains(t, packageClient, "UserService       *UserServiceClient\n")
 	requireContains(t, packageClient, "OwnerService      *OwnerServiceClient\n")
 	requireNotContains(t, packageClient, "EventService")
+}
+
+// TestSelfContained checks that generated code only imports the standard
+// library, google.golang.org/protobuf, and the .pb.go packages.
+func TestSelfContained(t *testing.T) {
+	t.Parallel()
+	response := generateTest(t, "paths=source_relative")
+	requireNoResponseError(t, response)
+	for _, file := range response.GetFile() {
+		parsed, err := parser.ParseFile(token.NewFileSet(), file.GetName(), file.GetContent(), parser.ImportsOnly)
+		requireNoError(t, err)
+		for _, importSpec := range parsed.Imports {
+			importPath, err := strconv.Unquote(importSpec.Path.Value)
+			requireNoError(t, err)
+			firstElement, _, _ := strings.Cut(importPath, "/")
+			if strings.Contains(firstElement, ".") &&
+				!strings.HasPrefix(importPath, "google.golang.org/protobuf/") &&
+				!strings.HasPrefix(importPath, testImportPath+"/") {
+				t.Errorf("%s imports %s", file.GetName(), importPath)
+			}
+		}
+	}
+	packageClient := responseFiles(response)["api/v1/apiv1client/apiv1client.connectclient.go"]
+	requireContains(t, packageClient, "func (c *conn) call(ctx context.Context, procedure string, req, res proto.Message) error {")
+	requireNotContains(t, packageClient, "package clientruntime")
+}
+
+func TestDeclaredNames(t *testing.T) {
+	t.Parallel()
+	_, body, ok := strings.Cut(runtimeSource, runtimePackageClause)
+	if !ok {
+		t.Fatalf("runtime source has no %q", runtimePackageClause)
+	}
+	names, err := declaredNames(body)
+	requireNoError(t, err)
+	for _, want := range []string{"Error", "ErrorDetail", "Option", "WithHTTPClient", "CodeOf", "CodeNotFound", "conn", "newConn"} {
+		if !slices.Contains(names, want) {
+			t.Errorf("declared names %v do not contain %s", names, want)
+		}
+	}
+}
+
+func TestInvalidRuntimeSource(t *testing.T) {
+	t.Parallel()
+	protogenPlugin, err := protogen.Options{}.New(newTestRequest(t, "paths=source_relative"))
+	requireNoError(t, err)
+	for _, source := range []string{"package other\n", "package clientruntime\nfunc f() {}\n"} {
+		if err := generate(protogenPlugin, defaultPackageSuffix, source); err == nil {
+			t.Errorf("generate with runtime source %q: no error", source)
+		}
+	}
 }
 
 func TestNoServices(t *testing.T) {

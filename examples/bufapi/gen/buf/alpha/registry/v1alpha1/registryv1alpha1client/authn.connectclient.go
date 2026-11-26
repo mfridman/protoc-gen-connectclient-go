@@ -19,10 +19,8 @@
 package registryv1alpha1client
 
 import (
-	connect "connectrpc.com/connect/v2"
 	context "context"
 	v1alpha1 "github.com/mfridman/protoc-gen-connectclient-go/examples/bufapi/gen/buf/alpha/registry/v1alpha1"
-	sync "sync"
 )
 
 const (
@@ -31,7 +29,7 @@ const (
 )
 
 // These constants are the procedure names of the unary RPCs in this file. They are the paths of the
-// HTTP requests, and connect.Spec.Procedure at run time.
+// HTTP requests.
 const (
 	// AuthnServiceGetCurrentUserProcedure is the procedure name of the AuthnService's GetCurrentUser
 	// RPC.
@@ -41,54 +39,35 @@ const (
 	AuthnServiceGetCurrentUserSubjectProcedure = "/buf.alpha.registry.v1alpha1.AuthnService/GetCurrentUserSubject"
 )
 
-var (
-	authnServiceGetCurrentUserSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1alpha1.File_buf_alpha_registry_v1alpha1_authn_proto.Services().ByName("AuthnService").Methods().ByName("GetCurrentUser"),
-			Procedure:        AuthnServiceGetCurrentUserProcedure,
-			IdempotencyLevel: connect.IdempotencyNoSideEffects,
-		}
-	})
-	authnServiceGetCurrentUserSubjectSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1alpha1.File_buf_alpha_registry_v1alpha1_authn_proto.Services().ByName("AuthnService").Methods().ByName("GetCurrentUserSubject"),
-			Procedure:        AuthnServiceGetCurrentUserSubjectProcedure,
-			IdempotencyLevel: connect.IdempotencyNoSideEffects,
-		}
-	})
-)
-
 // AuthnServiceClient is a client for the buf.alpha.registry.v1alpha1.AuthnService service.
 type AuthnServiceClient struct {
-	client *connect.Client
+	conn *conn
 }
 
-// NewAuthnServiceClient returns a client for the buf.alpha.registry.v1alpha1.AuthnService service.
-// Service clients may share one connect.Client.
-func NewAuthnServiceClient(client *connect.Client) *AuthnServiceClient {
-	return &AuthnServiceClient{client: client}
+// NewAuthnServiceClient returns a client for the buf.alpha.registry.v1alpha1.AuthnService service
+// at baseURL, for example "https://api.example.com". To call several services, use NewClient.
+func NewAuthnServiceClient(baseURL string, options ...Option) *AuthnServiceClient {
+	return &AuthnServiceClient{conn: newConn(baseURL, options)}
 }
 
 // GetCurrentUser gets information associated with the current user.
 //
 // The user's ID is retrieved from the request's authentication header.
 func (c *AuthnServiceClient) GetCurrentUser(ctx context.Context, req *v1alpha1.GetCurrentUserRequest) (*v1alpha1.GetCurrentUserResponse, error) {
-	var res v1alpha1.GetCurrentUserResponse
-	if err := c.client.CallUnary(ctx, authnServiceGetCurrentUserSpec(), req, &res); err != nil {
+	res := new(v1alpha1.GetCurrentUserResponse)
+	if err := c.conn.call(ctx, AuthnServiceGetCurrentUserProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // GetCurrentUserSubject gets the currently logged in users subject.
 //
 // The user's ID is retrieved from the request's authentication header.
 func (c *AuthnServiceClient) GetCurrentUserSubject(ctx context.Context, req *v1alpha1.GetCurrentUserSubjectRequest) (*v1alpha1.GetCurrentUserSubjectResponse, error) {
-	var res v1alpha1.GetCurrentUserSubjectResponse
-	if err := c.client.CallUnary(ctx, authnServiceGetCurrentUserSubjectSpec(), req, &res); err != nil {
+	res := new(v1alpha1.GetCurrentUserSubjectResponse)
+	if err := c.conn.call(ctx, AuthnServiceGetCurrentUserSubjectProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }

@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mfridman/protoc-gen-connectclient-go/connectclient"
 	registryv1alpha1 "github.com/mfridman/protoc-gen-connectclient-go/examples/bufapi/gen/buf/alpha/registry/v1alpha1"
 	"github.com/mfridman/protoc-gen-connectclient-go/examples/bufapi/gen/buf/alpha/registry/v1alpha1/registryv1alpha1client"
 )
@@ -40,10 +39,10 @@ func main() {
 		}
 	}
 
-	client := registryv1alpha1client.NewClient(connectclient.New(
+	client := registryv1alpha1client.NewClient(
 		"https://"+remote,
-		connectclient.WithHeader("Authorization", "Bearer "+token),
-	))
+		registryv1alpha1client.WithHeader("Authorization", "Bearer "+token),
+	)
 	resp, err := client.AuthnService.GetCurrentUser(context.Background(), &registryv1alpha1.GetCurrentUserRequest{})
 	if err != nil {
 		log.Fatal(err)

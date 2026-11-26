@@ -1,7 +1,6 @@
 // Command conformanceclient is a client under test for the Connect
 // conformance suite (https://github.com/connectrpc/conformance). It calls the
-// reference server with a client from protoc-gen-connectclient-go and the
-// connectclient transport.
+// reference server with a client from protoc-gen-connectclient-go.
 //
 // It reads size-delimited ClientCompatRequest messages from stdin and writes
 // ClientCompatResponse messages to stdout.
@@ -22,12 +21,11 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
-	"connectrpc.com/connect/v2"
-	"github.com/mfridman/protoc-gen-connectclient-go/connectclient"
 	conformancev1 "github.com/mfridman/protoc-gen-connectclient-go/internal/conformance/gen/connectrpc/conformance/v1"
 	"github.com/mfridman/protoc-gen-connectclient-go/internal/conformance/gen/connectrpc/conformance/v1/conformancev1client"
 	"google.golang.org/protobuf/proto"
@@ -119,22 +117,25 @@ func invokeRPC(
 	if err != nil {
 		return nil, err
 	}
-	client := conformancev1client.NewClient(connectclient.New(
-		baseURL,
-		connectclient.WithHTTPClient(httpClient),
-		connectclient.WithReadMaxBytes(int64(request.GetMessageReceiveLimit())),
-	))
+	// The generated client has no per-call headers, so the harness creates a
+	// client for each call and records the response headers with a
+	// RoundTripper.
+	recorder := &headerRecorder{next: httpClient.Transport}
+	options := []conformancev1client.Option{
+		conformancev1client.WithHTTPClient(&http.Client{Transport: recorder}),
+		conformancev1client.WithReadMaxBytes(int64(request.GetMessageReceiveLimit())),
+	}
+	for _, header := range request.GetRequestHeaders() {
+		for _, value := range header.GetValue() {
+			options = append(options, conformancev1client.WithHeader(header.GetName(), value))
+		}
+	}
+	client := conformancev1client.NewClient(baseURL, options...)
 
 	if request.TimeoutMs != nil {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, time.Duration(request.GetTimeoutMs())*time.Millisecond)
 		defer cancel()
-	}
-	ctx, callInfo := connect.NewClientContext(ctx)
-	for _, header := range request.GetRequestHeaders() {
-		for _, value := range header.GetValue() {
-			callInfo.RequestHeader().Add(header.GetName(), value)
-		}
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -180,10 +181,8 @@ func invokeRPC(
 		return nil, fmt.Errorf("unsupported method %q", request.GetMethod())
 	}
 
-	result := &conformancev1.ClientResponseResult{
-		ResponseHeaders:  protoHeaders(callInfo.ResponseHeader()),
-		ResponseTrailers: protoHeaders(callInfo.ResponseTrailer()),
-	}
+	result := &conformancev1.ClientResponseResult{}
+	result.ResponseHeaders, result.ResponseTrailers = recorder.protoHeaders()
 	if err != nil {
 		result.Error = protoError(err)
 	} else {
@@ -195,27 +194,54 @@ func invokeRPC(
 	return result, nil
 }
 
-func protoHeaders(header *connect.Header) []*conformancev1.Header {
-	var headers []*conformancev1.Header
-	for name, values := range header.All() {
+// headerRecorder records the response headers of a call. The Connect protocol
+// sends unary trailers as headers with a "Trailer-" prefix.
+type headerRecorder struct {
+	next   http.RoundTripper
+	mutex  sync.Mutex
+	header http.Header
+}
+
+func (r *headerRecorder) RoundTrip(request *http.Request) (*http.Response, error) {
+	response, err := r.next.RoundTrip(request)
+	if err == nil {
+		r.mutex.Lock()
+		r.header = response.Header.Clone()
+		r.mutex.Unlock()
+	}
+	return response, err
+}
+
+func (r *headerRecorder) protoHeaders() (headers, trailers []*conformancev1.Header) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	for name, values := range r.header {
+		if trailerName, ok := strings.CutPrefix(name, "Trailer-"); ok {
+			trailers = append(trailers, &conformancev1.Header{Name: trailerName, Value: values})
+			continue
+		}
 		headers = append(headers, &conformancev1.Header{Name: name, Value: values})
 	}
-	return headers
+	return headers, trailers
 }
 
 func protoError(err error) *conformancev1.Error {
-	connectError, ok := errors.AsType[*connect.Error](err)
+	callError, ok := errors.AsType[*conformancev1client.Error](err)
 	if !ok {
 		return &conformancev1.Error{
 			Code:    conformancev1.Code_CODE_UNKNOWN,
 			Message: proto.String(err.Error()),
 		}
 	}
-	result := &conformancev1.Error{
-		Code:    conformancev1.Code(connectError.Code()),
-		Message: proto.String(connectError.Message()),
+	code, ok := conformancev1.Code_value["CODE_"+strings.ToUpper(string(callError.Code))]
+	if !ok {
+		code = int32(conformancev1.Code_CODE_UNKNOWN)
 	}
-	for _, detail := range connectError.Details() {
+	result := &conformancev1.Error{
+		Code:    conformancev1.Code(code),
+		Message: proto.String(callError.Message),
+	}
+	for _, detail := range callError.Details {
 		result.Details = append(result.Details, &anypb.Any{
 			TypeUrl: "type.googleapis.com/" + detail.Type,
 			Value:   detail.Value,

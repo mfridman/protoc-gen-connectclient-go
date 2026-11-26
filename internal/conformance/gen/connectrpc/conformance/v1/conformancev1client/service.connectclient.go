@@ -19,10 +19,8 @@
 package conformancev1client
 
 import (
-	connect "connectrpc.com/connect/v2"
 	context "context"
 	v1 "github.com/mfridman/protoc-gen-connectclient-go/internal/conformance/gen/connectrpc/conformance/v1"
-	sync "sync"
 )
 
 const (
@@ -31,7 +29,7 @@ const (
 )
 
 // These constants are the procedure names of the unary RPCs in this file. They are the paths of the
-// HTTP requests, and connect.Spec.Procedure at run time.
+// HTTP requests.
 const (
 	// ConformanceServiceUnaryProcedure is the procedure name of the ConformanceService's Unary RPC.
 	ConformanceServiceUnaryProcedure = "/connectrpc.conformance.v1.ConformanceService/Unary"
@@ -43,43 +41,19 @@ const (
 	ConformanceServiceIdempotentUnaryProcedure = "/connectrpc.conformance.v1.ConformanceService/IdempotentUnary"
 )
 
-var (
-	conformanceServiceUnarySpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType: connect.StreamTypeUnary,
-			Schema:     v1.File_connectrpc_conformance_v1_service_proto.Services().ByName("ConformanceService").Methods().ByName("Unary"),
-			Procedure:  ConformanceServiceUnaryProcedure,
-		}
-	})
-	conformanceServiceUnimplementedSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType: connect.StreamTypeUnary,
-			Schema:     v1.File_connectrpc_conformance_v1_service_proto.Services().ByName("ConformanceService").Methods().ByName("Unimplemented"),
-			Procedure:  ConformanceServiceUnimplementedProcedure,
-		}
-	})
-	conformanceServiceIdempotentUnarySpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1.File_connectrpc_conformance_v1_service_proto.Services().ByName("ConformanceService").Methods().ByName("IdempotentUnary"),
-			Procedure:        ConformanceServiceIdempotentUnaryProcedure,
-			IdempotencyLevel: connect.IdempotencyNoSideEffects,
-		}
-	})
-)
-
 // ConformanceServiceClient is a client for the connectrpc.conformance.v1.ConformanceService
 // service.
 //
 // Streaming RPCs are not generated: ServerStream, ClientStream, BidiStream.
 type ConformanceServiceClient struct {
-	client *connect.Client
+	conn *conn
 }
 
 // NewConformanceServiceClient returns a client for the connectrpc.conformance.v1.ConformanceService
-// service. Service clients may share one connect.Client.
-func NewConformanceServiceClient(client *connect.Client) *ConformanceServiceClient {
-	return &ConformanceServiceClient{client: client}
+// service at baseURL, for example "https://api.example.com". To call several services, use
+// NewClient.
+func NewConformanceServiceClient(baseURL string, options ...Option) *ConformanceServiceClient {
+	return &ConformanceServiceClient{conn: newConn(baseURL, options)}
 }
 
 // A unary operation. The request indicates the response headers and trailers
@@ -97,30 +71,30 @@ func NewConformanceServiceClient(client *connect.Client) *ConformanceServiceClie
 // if it is, set no response headers or trailers and return no response data.
 // The returned payload should only contain the request info.
 func (c *ConformanceServiceClient) Unary(ctx context.Context, req *v1.UnaryRequest) (*v1.UnaryResponse, error) {
-	var res v1.UnaryResponse
-	if err := c.client.CallUnary(ctx, conformanceServiceUnarySpec(), req, &res); err != nil {
+	res := new(v1.UnaryResponse)
+	if err := c.conn.call(ctx, ConformanceServiceUnaryProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // A unary endpoint that the server should not implement and should instead
 // return an unimplemented error when invoked.
 func (c *ConformanceServiceClient) Unimplemented(ctx context.Context, req *v1.UnimplementedRequest) (*v1.UnimplementedResponse, error) {
-	var res v1.UnimplementedResponse
-	if err := c.client.CallUnary(ctx, conformanceServiceUnimplementedSpec(), req, &res); err != nil {
+	res := new(v1.UnimplementedResponse)
+	if err := c.conn.call(ctx, ConformanceServiceUnimplementedProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // A unary endpoint denoted as having no side effects (i.e. idempotent).
 // Implementations should use an HTTP GET when invoking this endpoint and
 // leverage query parameters to send data.
 func (c *ConformanceServiceClient) IdempotentUnary(ctx context.Context, req *v1.IdempotentUnaryRequest) (*v1.IdempotentUnaryResponse, error) {
-	var res v1.IdempotentUnaryResponse
-	if err := c.client.CallUnary(ctx, conformanceServiceIdempotentUnarySpec(), req, &res); err != nil {
+	res := new(v1.IdempotentUnaryResponse)
+	if err := c.conn.call(ctx, ConformanceServiceIdempotentUnaryProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }

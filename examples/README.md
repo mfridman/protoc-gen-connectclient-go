@@ -35,7 +35,7 @@ Response: Hello...I'm glad you could drop by today.
 The client code is short:
 
 ```go
-client := elizav1client.NewClient(connectclient.New("https://demo.connectrpc.com"))
+client := elizav1client.NewClient("https://demo.connectrpc.com")
 resp, err := client.ElizaService.Say(context.Background(), &elizav1.SayRequest{
 	Sentence: "Hello",
 })

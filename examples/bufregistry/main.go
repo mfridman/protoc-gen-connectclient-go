@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mfridman/protoc-gen-connectclient-go/connectclient"
 	ownerv1 "github.com/mfridman/protoc-gen-connectclient-go/examples/bufregistry/gen/buf/registry/owner/v1"
 	"github.com/mfridman/protoc-gen-connectclient-go/examples/bufregistry/gen/buf/registry/owner/v1/ownerv1client"
 )
@@ -45,10 +44,10 @@ func main() {
 		}
 	}
 
-	client := ownerv1client.NewClient(connectclient.New(
+	client := ownerv1client.NewClient(
 		"https://"+remote,
-		connectclient.WithHeader("Authorization", "Bearer "+token),
-	))
+		ownerv1client.WithHeader("Authorization", "Bearer "+token),
+	)
 	resp, err := client.UserService.GetUsers(context.Background(), &ownerv1.GetUsersRequest{
 		UserRefs: []*ownerv1.UserRef{
 			{

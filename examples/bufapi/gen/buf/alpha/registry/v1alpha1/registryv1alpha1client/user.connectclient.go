@@ -19,10 +19,8 @@
 package registryv1alpha1client
 
 import (
-	connect "connectrpc.com/connect/v2"
 	context "context"
 	v1alpha1 "github.com/mfridman/protoc-gen-connectclient-go/examples/bufapi/gen/buf/alpha/registry/v1alpha1"
-	sync "sync"
 )
 
 const (
@@ -31,7 +29,7 @@ const (
 )
 
 // These constants are the procedure names of the unary RPCs in this file. They are the paths of the
-// HTTP requests, and connect.Spec.Procedure at run time.
+// HTTP requests.
 const (
 	// UserServiceCreateUserProcedure is the procedure name of the UserService's CreateUser RPC.
 	UserServiceCreateUserProcedure = "/buf.alpha.registry.v1alpha1.UserService/CreateUser"
@@ -59,185 +57,104 @@ const (
 	UserServiceUpdateUserSettingsProcedure = "/buf.alpha.registry.v1alpha1.UserService/UpdateUserSettings"
 )
 
-var (
-	userServiceCreateUserSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1alpha1.File_buf_alpha_registry_v1alpha1_user_proto.Services().ByName("UserService").Methods().ByName("CreateUser"),
-			Procedure:        UserServiceCreateUserProcedure,
-			IdempotencyLevel: connect.IdempotencyIdempotent,
-		}
-	})
-	userServiceGetUserSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1alpha1.File_buf_alpha_registry_v1alpha1_user_proto.Services().ByName("UserService").Methods().ByName("GetUser"),
-			Procedure:        UserServiceGetUserProcedure,
-			IdempotencyLevel: connect.IdempotencyNoSideEffects,
-		}
-	})
-	userServiceGetUserByUsernameSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1alpha1.File_buf_alpha_registry_v1alpha1_user_proto.Services().ByName("UserService").Methods().ByName("GetUserByUsername"),
-			Procedure:        UserServiceGetUserByUsernameProcedure,
-			IdempotencyLevel: connect.IdempotencyNoSideEffects,
-		}
-	})
-	userServiceListUsersSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1alpha1.File_buf_alpha_registry_v1alpha1_user_proto.Services().ByName("UserService").Methods().ByName("ListUsers"),
-			Procedure:        UserServiceListUsersProcedure,
-			IdempotencyLevel: connect.IdempotencyNoSideEffects,
-		}
-	})
-	userServiceListOrganizationUsersSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1alpha1.File_buf_alpha_registry_v1alpha1_user_proto.Services().ByName("UserService").Methods().ByName("ListOrganizationUsers"),
-			Procedure:        UserServiceListOrganizationUsersProcedure,
-			IdempotencyLevel: connect.IdempotencyNoSideEffects,
-		}
-	})
-	userServiceDeleteUserSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1alpha1.File_buf_alpha_registry_v1alpha1_user_proto.Services().ByName("UserService").Methods().ByName("DeleteUser"),
-			Procedure:        UserServiceDeleteUserProcedure,
-			IdempotencyLevel: connect.IdempotencyIdempotent,
-		}
-	})
-	userServiceDeactivateUserSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1alpha1.File_buf_alpha_registry_v1alpha1_user_proto.Services().ByName("UserService").Methods().ByName("DeactivateUser"),
-			Procedure:        UserServiceDeactivateUserProcedure,
-			IdempotencyLevel: connect.IdempotencyIdempotent,
-		}
-	})
-	userServiceUpdateUserServerRoleSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType: connect.StreamTypeUnary,
-			Schema:     v1alpha1.File_buf_alpha_registry_v1alpha1_user_proto.Services().ByName("UserService").Methods().ByName("UpdateUserServerRole"),
-			Procedure:  UserServiceUpdateUserServerRoleProcedure,
-		}
-	})
-	userServiceCountUsersSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType:       connect.StreamTypeUnary,
-			Schema:           v1alpha1.File_buf_alpha_registry_v1alpha1_user_proto.Services().ByName("UserService").Methods().ByName("CountUsers"),
-			Procedure:        UserServiceCountUsersProcedure,
-			IdempotencyLevel: connect.IdempotencyNoSideEffects,
-		}
-	})
-	userServiceUpdateUserSettingsSpec = sync.OnceValue(func() connect.Spec {
-		return connect.Spec{
-			StreamType: connect.StreamTypeUnary,
-			Schema:     v1alpha1.File_buf_alpha_registry_v1alpha1_user_proto.Services().ByName("UserService").Methods().ByName("UpdateUserSettings"),
-			Procedure:  UserServiceUpdateUserSettingsProcedure,
-		}
-	})
-)
-
 // UserServiceClient is a client for the buf.alpha.registry.v1alpha1.UserService service.
 type UserServiceClient struct {
-	client *connect.Client
+	conn *conn
 }
 
-// NewUserServiceClient returns a client for the buf.alpha.registry.v1alpha1.UserService service.
-// Service clients may share one connect.Client.
-func NewUserServiceClient(client *connect.Client) *UserServiceClient {
-	return &UserServiceClient{client: client}
+// NewUserServiceClient returns a client for the buf.alpha.registry.v1alpha1.UserService service at
+// baseURL, for example "https://api.example.com". To call several services, use NewClient.
+func NewUserServiceClient(baseURL string, options ...Option) *UserServiceClient {
+	return &UserServiceClient{conn: newConn(baseURL, options)}
 }
 
 // CreateUser creates a new user with the given username.
 func (c *UserServiceClient) CreateUser(ctx context.Context, req *v1alpha1.CreateUserRequest) (*v1alpha1.CreateUserResponse, error) {
-	var res v1alpha1.CreateUserResponse
-	if err := c.client.CallUnary(ctx, userServiceCreateUserSpec(), req, &res); err != nil {
+	res := new(v1alpha1.CreateUserResponse)
+	if err := c.conn.call(ctx, UserServiceCreateUserProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // GetUser gets a user by ID.
 func (c *UserServiceClient) GetUser(ctx context.Context, req *v1alpha1.GetUserRequest) (*v1alpha1.GetUserResponse, error) {
-	var res v1alpha1.GetUserResponse
-	if err := c.client.CallUnary(ctx, userServiceGetUserSpec(), req, &res); err != nil {
+	res := new(v1alpha1.GetUserResponse)
+	if err := c.conn.call(ctx, UserServiceGetUserProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // GetUserByUsername gets a user by username.
 func (c *UserServiceClient) GetUserByUsername(ctx context.Context, req *v1alpha1.GetUserByUsernameRequest) (*v1alpha1.GetUserByUsernameResponse, error) {
-	var res v1alpha1.GetUserByUsernameResponse
-	if err := c.client.CallUnary(ctx, userServiceGetUserByUsernameSpec(), req, &res); err != nil {
+	res := new(v1alpha1.GetUserByUsernameResponse)
+	if err := c.conn.call(ctx, UserServiceGetUserByUsernameProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // ListUsers lists all users.
 func (c *UserServiceClient) ListUsers(ctx context.Context, req *v1alpha1.ListUsersRequest) (*v1alpha1.ListUsersResponse, error) {
-	var res v1alpha1.ListUsersResponse
-	if err := c.client.CallUnary(ctx, userServiceListUsersSpec(), req, &res); err != nil {
+	res := new(v1alpha1.ListUsersResponse)
+	if err := c.conn.call(ctx, UserServiceListUsersProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // ListOrganizationUsers lists all users for an organization.
 // TODO: #663 move this to organization service
 func (c *UserServiceClient) ListOrganizationUsers(ctx context.Context, req *v1alpha1.ListOrganizationUsersRequest) (*v1alpha1.ListOrganizationUsersResponse, error) {
-	var res v1alpha1.ListOrganizationUsersResponse
-	if err := c.client.CallUnary(ctx, userServiceListOrganizationUsersSpec(), req, &res); err != nil {
+	res := new(v1alpha1.ListOrganizationUsersResponse)
+	if err := c.conn.call(ctx, UserServiceListOrganizationUsersProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // DeleteUser deletes a user.
 func (c *UserServiceClient) DeleteUser(ctx context.Context, req *v1alpha1.DeleteUserRequest) (*v1alpha1.DeleteUserResponse, error) {
-	var res v1alpha1.DeleteUserResponse
-	if err := c.client.CallUnary(ctx, userServiceDeleteUserSpec(), req, &res); err != nil {
+	res := new(v1alpha1.DeleteUserResponse)
+	if err := c.conn.call(ctx, UserServiceDeleteUserProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // Deactivate user deactivates a user.
 func (c *UserServiceClient) DeactivateUser(ctx context.Context, req *v1alpha1.DeactivateUserRequest) (*v1alpha1.DeactivateUserResponse, error) {
-	var res v1alpha1.DeactivateUserResponse
-	if err := c.client.CallUnary(ctx, userServiceDeactivateUserSpec(), req, &res); err != nil {
+	res := new(v1alpha1.DeactivateUserResponse)
+	if err := c.conn.call(ctx, UserServiceDeactivateUserProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // UpdateUserServerRole update the role of an user in the server.
 func (c *UserServiceClient) UpdateUserServerRole(ctx context.Context, req *v1alpha1.UpdateUserServerRoleRequest) (*v1alpha1.UpdateUserServerRoleResponse, error) {
-	var res v1alpha1.UpdateUserServerRoleResponse
-	if err := c.client.CallUnary(ctx, userServiceUpdateUserServerRoleSpec(), req, &res); err != nil {
+	res := new(v1alpha1.UpdateUserServerRoleResponse)
+	if err := c.conn.call(ctx, UserServiceUpdateUserServerRoleProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // CountUsers returns the number of users in the server by the user state provided.
 func (c *UserServiceClient) CountUsers(ctx context.Context, req *v1alpha1.CountUsersRequest) (*v1alpha1.CountUsersResponse, error) {
-	var res v1alpha1.CountUsersResponse
-	if err := c.client.CallUnary(ctx, userServiceCountUsersSpec(), req, &res); err != nil {
+	res := new(v1alpha1.CountUsersResponse)
+	if err := c.conn.call(ctx, UserServiceCountUsersProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // UpdateUserSettings update the user settings including description.
 func (c *UserServiceClient) UpdateUserSettings(ctx context.Context, req *v1alpha1.UpdateUserSettingsRequest) (*v1alpha1.UpdateUserSettingsResponse, error) {
-	var res v1alpha1.UpdateUserSettingsResponse
-	if err := c.client.CallUnary(ctx, userServiceUpdateUserSettingsSpec(), req, &res); err != nil {
+	res := new(v1alpha1.UpdateUserSettingsResponse)
+	if err := c.conn.call(ctx, UserServiceUpdateUserSettingsProcedure, req, res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }

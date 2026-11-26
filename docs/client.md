@@ -1,30 +1,34 @@
 # Using the client
 
-`connectclient.New` returns a `*connect.Client`. All the service clients share it, so they also share its HTTP connections and interceptors. To use one service only, call its constructor, for example `elizav1client.NewElizaServiceClient(client)`.
+`NewClient(baseURL, options...)` returns a `Client` with a field for each service in the package. The service clients share HTTP connections and options. To use one service only, call its constructor, for example `elizav1client.NewElizaServiceClient(baseURL)`.
 
-## Several packages
-
-The plugin writes one `Client` per Go package. To call services from several packages, pass the same `*connect.Client` to each one. They then share HTTP connections, headers, and interceptors:
-
-```go
-client := connectclient.New(
-	"https://buf.build",
-	connectclient.WithHeader("Authorization", "Bearer "+token),
-)
-ownerClient := ownerv1client.NewClient(client)
-moduleClient := modulev1client.NewClient(client)
-```
-
-A program only links the packages that it imports.
+Each generated package has its own copy of the client code, so the types below, such as `Error` and `Option`, belong to that package.
 
 ## Options
 
 | Option | Description |
 |---|---|
 | `WithHTTPClient(httpClient)` | Sets the HTTP client. The default is `http.DefaultClient`. |
-| `WithHeader(name, value)` | Adds a request header to every call, for example `Authorization`. |
-| `WithInterceptors(interceptors...)` | Adds `connect.ClientInterceptor` values, for example for auth, logging, or protovalidate. |
+| `WithHeader(name, value)` | Adds a request header to every call, for example `Authorization` or `User-Agent`. |
 | `WithReadMaxBytes(n)` | Limits the size of a response. The default is 4 MiB. Zero removes the limit. |
+| `WithAfterCall(hook)` | Runs `hook(ctx, err)` once after each call. `err` is nil on success. |
+
+## Logging and timing
+
+`WithAfterCall` gets the context of the call, so pass what the hook needs, such as a start time or a request ID, in the context:
+
+```go
+type startKey struct{}
+
+client := apiv1client.NewClient(baseURL, apiv1client.WithAfterCall(func(ctx context.Context, err error) {
+	start, _ := ctx.Value(startKey{}).(time.Time)
+	slog.DebugContext(ctx, "call", "duration", time.Since(start), "error", err)
+}))
+ctx = context.WithValue(ctx, startKey{}, time.Now())
+user, err := client.UserService.GetUser(ctx, req)
+```
+
+The hook cannot change the result. For retries, per-call headers, or a dump of the HTTP traffic, use an `http.RoundTripper` in the HTTP client.
 
 ## Unix sockets
 
@@ -35,51 +39,40 @@ httpClient := &http.Client{Transport: &http.Transport{
 		return dialer.DialContext(ctx, "unix", socketPath)
 	},
 }}
-client := apiv1client.NewClient(connectclient.New(
-	"http://unix",
-	connectclient.WithHTTPClient(httpClient),
-))
+client := apiv1client.NewClient("http://unix", apiv1client.WithHTTPClient(httpClient))
 ```
 
 ## Errors
 
-A failed call returns a `*connect.Error`, the same type that connect-go returns. Use `connect.CodeOf(err)` for the code. Error details come back as `connect.ErrorDetail` values; decode them with `connectproto.UnmarshalErrorDetail`.
+A failed call returns an `*Error` with the `Code`, `Message`, and `Details` from the server, and the `Procedure` that failed. `Error()` returns `code: message`. `CodeOf(err)` returns the code. `Details[i].Message()` unmarshals a detail into its Protobuf type.
 
-If a response has no Connect error body, for example a `502` from a proxy, the code comes from the HTTP status, as the Connect protocol specifies. A failed connection gives `unavailable`. A canceled context gives `canceled`, and an expired deadline gives `deadline_exceeded`.
+If a response has no Connect error body, for example a `502` from a proxy, the code comes from the HTTP status, as the Connect protocol specifies. A failed connection gives `CodeUnavailable`, a canceled context gives `CodeCanceled`, and an expired deadline gives `CodeDeadlineExceeded`. These errors wrap the cause, so `errors.Is(err, syscall.ENOENT)` and `errors.Is(err, context.DeadlineExceeded)` work.
 
-## Deadlines, headers, and trailers
+## Deadlines
 
-The transport sends the context deadline to the server in the `Connect-Timeout-Ms` header. Request headers, response headers, and trailers use `connect.CallInfo`:
+The client sends the context deadline to the server in the `Connect-Timeout-Ms` header.
 
-```go
-ctx, callInfo := connect.NewClientContext(ctx)
-callInfo.RequestHeader().Set("X-Request-Id", requestID)
-resp, err := client.ElizaService.Say(ctx, req)
-fmt.Println(callInfo.ResponseHeader().Get("X-Server"), callInfo.ResponseTrailer().Get("X-Trailer"))
-```
+## Several packages
 
-## Stock connect-go code
-
-`connectclient.Transport` works with any client that the stock `protoc-gen-connect-go` v2 plugin generates:
+Each Go package has its own `Client`. To call services from several packages, create one for each, with the same HTTP client and options:
 
 ```go
-client := elizav1connect.NewElizaServiceClient(
-	connect.NewClient(connectclient.NewTransport("https://demo.connectrpc.com")),
-)
+options := []ownerv1client.Option{ownerv1client.WithHeader("Authorization", "Bearer "+token)}
+ownerClient := ownerv1client.NewClient("https://buf.build", options...)
+moduleClient := modulev1client.NewClient("https://buf.build", modulev1client.WithHeader("Authorization", "Bearer "+token))
 ```
 
-Stock generated clients are interfaces, so a program links all of their methods. The structs from this plugin are smaller.
+A program only links the packages that it imports.
 
 ## Supported features
 
 | Supported | Not supported |
 |---|---|
-| Unary RPCs | Streaming RPCs (calls fail with `unimplemented`) |
+| Unary RPCs | Streaming RPCs (not generated) |
 | The Connect protocol | The gRPC and gRPC-Web protocols |
 | Binary Protobuf | JSON |
 | HTTP/1.1 and HTTP/2, with or without TLS | Connect GET requests |
 | gzip responses, decompressed by `net/http` | Compressed requests |
-| Deadlines, error codes and details, headers, trailers | |
-| Interceptors and `connect.CallInfo` | |
+| Deadlines, error codes and details, an after-call hook | Interceptors, per-call headers, response headers, and trailers (use an `http.RoundTripper`) |
 
-If you need something from the right column, use `connectrpc.com/connect/v2/connecthttp`. Both transports work with the same server, and you can change from one to the other without changing your generated code.
+If you need something from the right column, use [connect-go](https://github.com/connectrpc/connect-go). Both work with the same server.
