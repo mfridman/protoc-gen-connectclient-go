@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -19,6 +20,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"google.golang.org/protobuf/proto"
@@ -86,20 +88,54 @@ func TestHeaders(t *testing.T) {
 
 func TestDeadline(t *testing.T) {
 	t.Parallel()
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeProto(w, wrapperspb.String(r.Header.Get("Connect-Timeout-Ms")))
-	}))
-	t.Cleanup(server.Close)
-	conn := newConn(server.URL, nil)
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
-	timeoutMs, err := strconv.Atoi(callString(t, conn, ctx, ""))
-	requireNoError(t, err)
-	// A slow test machine can spend time before the call, so only check that
-	// the header is set and does not exceed the deadline.
-	if timeoutMs <= 0 || timeoutMs > 5000 {
-		t.Fatalf("Connect-Timeout-Ms = %d, want at most 5000", timeoutMs)
-	}
+	// Time only moves in the bubble when every goroutine is blocked, so the
+	// header has the exact timeout.
+	synctest.Test(t, func(t *testing.T) {
+		conn := newConn("http://api.example.com", []Option{WithHTTPClient(handlerClient(
+			func(w http.ResponseWriter, r *http.Request) {
+				writeProto(w, wrapperspb.String(r.Header.Get("Connect-Timeout-Ms")))
+			},
+		))})
+		for timeout, want := range map[time.Duration]string{
+			5 * time.Second:         "5000",
+			1500 * time.Microsecond: "2", // rounded up
+		} {
+			ctx, cancel := context.WithTimeout(t.Context(), timeout)
+			requireEqual(t, callString(t, conn, ctx, ""), want)
+			cancel()
+		}
+		requireEqual(t, callString(t, conn, t.Context(), ""), "")
+	})
+}
+
+func TestCancelAndDeadline(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		// The server never answers, so only the context ends the call.
+		conn := newConn("http://api.example.com", []Option{WithHTTPClient(handlerClient(
+			func(_ http.ResponseWriter, r *http.Request) { <-r.Context().Done() },
+		))})
+
+		ctx, cancel := context.WithCancel(t.Context())
+		time.AfterFunc(time.Minute, cancel)
+		start := time.Now()
+		err := conn.call(ctx, testProcedure, wrapperspb.String(""), &wrapperspb.StringValue{})
+		checkCode(t, err, CodeCanceled)
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("errors.Is(%v, context.Canceled) = false", err)
+		}
+		requireEqual(t, time.Since(start), time.Minute)
+
+		ctx, cancel = context.WithTimeout(t.Context(), time.Hour)
+		defer cancel()
+		start = time.Now()
+		err = conn.call(ctx, testProcedure, wrapperspb.String(""), &wrapperspb.StringValue{})
+		checkCode(t, err, CodeDeadlineExceeded)
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("errors.Is(%v, context.DeadlineExceeded) = false", err)
+		}
+		requireEqual(t, time.Since(start), time.Hour)
+	})
 }
 
 func TestExpiredDeadlineSendsNothing(t *testing.T) {
@@ -277,28 +313,10 @@ func TestLargeProxyError(t *testing.T) {
 
 func TestTransportErrors(t *testing.T) {
 	t.Parallel()
-	slow := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		<-r.Context().Done()
-	}))
-	t.Cleanup(slow.Close)
-
-	ctx, cancel := context.WithCancel(t.Context())
-	time.AfterFunc(50*time.Millisecond, cancel)
-	err := newConn(slow.URL, nil).call(ctx, testProcedure, wrapperspb.String(""), &wrapperspb.StringValue{})
-	checkCode(t, err, CodeCanceled)
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("errors.Is(%v, context.Canceled) = false", err)
-	}
-
-	ctx, cancel = context.WithTimeout(t.Context(), 50*time.Millisecond)
-	defer cancel()
-	err = newConn(slow.URL, nil).call(ctx, testProcedure, wrapperspb.String(""), &wrapperspb.StringValue{})
-	checkCode(t, err, CodeDeadlineExceeded)
-
 	closed := httptest.NewServer(http.NotFoundHandler())
 	closedURL := closed.URL
 	closed.Close()
-	err = newConn(closedURL, nil).call(t.Context(), testProcedure, wrapperspb.String(""), &wrapperspb.StringValue{})
+	err := newConn(closedURL, nil).call(t.Context(), testProcedure, wrapperspb.String(""), &wrapperspb.StringValue{})
 	checkCode(t, err, CodeUnavailable)
 
 	err = newConn("http://[::1", nil).call(t.Context(), testProcedure, wrapperspb.String(""), &wrapperspb.StringValue{})
@@ -539,6 +557,20 @@ func TestErrorDetailUnknownType(t *testing.T) {
 	if err == nil {
 		t.Fatal("no error for an unknown detail type")
 	}
+}
+
+// handlerClient is an HTTPClient that calls handler in the same goroutine,
+// without a network, for tests in a synctest bubble. Like net/http, it
+// returns an error when the request context ends.
+type handlerClient http.HandlerFunc
+
+func (c handlerClient) Do(req *http.Request) (*http.Response, error) {
+	recorder := httptest.NewRecorder()
+	c(recorder, req)
+	if err := req.Context().Err(); err != nil {
+		return nil, &url.Error{Op: req.Method, URL: req.URL.String(), Err: err}
+	}
+	return recorder.Result(), nil
 }
 
 func callString(t *testing.T, conn *conn, ctx context.Context, value string) string {
