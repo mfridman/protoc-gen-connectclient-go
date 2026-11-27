@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [v0.2.1] - 2026-11-27
+
 ### Fixed
 
 - The plugin reports an error for a service whose client name collides with the client runtime, such as a service named `HTTP`, instead of generating code that does not compile
@@ -32,5 +34,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Request and response types come from the method definition, not from the method name
 
-[Unreleased]: https://github.com/mfridman/protoc-gen-connectclient-go/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/mfridman/protoc-gen-connectclient-go/compare/v0.2.1...HEAD
+[v0.2.1]: https://github.com/mfridman/protoc-gen-connectclient-go/compare/v0.2.0...v0.2.1
 [v0.2.0]: https://github.com/mfridman/protoc-gen-connectclient-go/compare/v0.1.2...v0.2.0
