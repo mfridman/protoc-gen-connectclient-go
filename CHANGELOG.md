@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [v0.2.0] - 2026-11-27
+
 ### Changed
 
 - **Breaking:** code goes into a `<package>client` sub-package by default. `package_suffix`, as in `protoc-gen-connect-go`, replaces `separate_packages`; set `package_suffix=` to keep the old layout
@@ -24,3 +26,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Fixed
 
 - Request and response types come from the method definition, not from the method name
+
+[Unreleased]: https://github.com/mfridman/protoc-gen-connectclient-go/compare/v0.2.0...HEAD
+[v0.2.0]: https://github.com/mfridman/protoc-gen-connectclient-go/compare/v0.1.2...v0.2.0
