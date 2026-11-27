@@ -230,7 +230,7 @@ func protoError(err error) *conformancev1.Error {
 	if !ok {
 		return &conformancev1.Error{
 			Code:    conformancev1.Code_CODE_UNKNOWN,
-			Message: proto.String(err.Error()),
+			Message: new(err.Error()),
 		}
 	}
 	code, ok := conformancev1.Code_value["CODE_"+strings.ToUpper(string(callError.Code))]
@@ -239,7 +239,7 @@ func protoError(err error) *conformancev1.Error {
 	}
 	result := &conformancev1.Error{
 		Code:    conformancev1.Code(code),
-		Message: proto.String(callError.Message),
+		Message: new(callError.Message),
 	}
 	for _, detail := range callError.Details {
 		result.Details = append(result.Details, &anypb.Any{

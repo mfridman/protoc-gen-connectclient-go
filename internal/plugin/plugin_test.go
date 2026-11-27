@@ -322,7 +322,7 @@ func newTestRequest(t *testing.T, parameter string) *pluginpb.CodeGeneratorReque
 	}
 	return &pluginpb.CodeGeneratorRequest{
 		FileToGenerate: filesToGenerate,
-		Parameter:      proto.String(strings.Join(parameters, ",")),
+		Parameter:      new(strings.Join(parameters, ",")),
 		ProtoFile:      fileDescriptorSet.GetFile(),
 	}
 }

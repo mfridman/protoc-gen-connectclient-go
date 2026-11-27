@@ -271,8 +271,8 @@ func (c *conn) call(ctx context.Context, procedure string, req, res proto.Messag
 
 // runDone runs the done functions of hooks in reverse order.
 func runDone(dones []func(*http.Response, error), httpResponse *http.Response, err error) {
-	for index := len(dones) - 1; index >= 0; index-- {
-		dones[index](httpResponse, err)
+	for _, done := range slices.Backward(dones) {
+		done(httpResponse, err)
 	}
 }
 

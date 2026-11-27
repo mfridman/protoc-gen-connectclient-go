@@ -23,7 +23,6 @@ import (
 	"unicode/utf8"
 
 	"google.golang.org/protobuf/compiler/protogen"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/pluginpb"
@@ -57,7 +56,7 @@ func Generate(request *pluginpb.CodeGeneratorRequest) (*pluginpb.CodeGeneratorRe
 		ParamFunc: setOption(&flagSet),
 	}.New(request)
 	if err != nil {
-		return &pluginpb.CodeGeneratorResponse{Error: proto.String(err.Error())}, nil
+		return &pluginpb.CodeGeneratorResponse{Error: new(err.Error())}, nil
 	}
 	protogenPlugin.SupportedFeatures = uint64(pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL) |
 		uint64(pluginpb.CodeGeneratorResponse_FEATURE_SUPPORTS_EDITIONS)

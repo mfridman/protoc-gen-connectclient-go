@@ -19,7 +19,7 @@ func TestDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("go list: %v\n%s", err, output)
 	}
-	for _, dep := range strings.Fields(string(output)) {
+	for dep := range strings.FieldsSeq(string(output)) {
 		firstElement, _, _ := strings.Cut(dep, "/")
 		if strings.Contains(firstElement, ".") &&
 			!strings.HasPrefix(dep, "google.golang.org/protobuf/") &&
