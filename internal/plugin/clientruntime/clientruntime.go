@@ -70,7 +70,7 @@ func WithReadMaxBytes(readMaxBytes int64) Option {
 // WithTimeout sets a deadline for calls whose context has none. The server
 // gets the deadline in the Connect-Timeout-Ms header. Without this option or
 // a context deadline, a call to a server that does not answer can wait
-// forever.
+// forever. A value of zero or less sets no deadline.
 func WithTimeout(timeout time.Duration) Option {
 	return optionFunc(func(config *clientConfig) {
 		config.timeout = timeout

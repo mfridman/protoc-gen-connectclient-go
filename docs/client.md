@@ -7,7 +7,7 @@
 | `WithHTTPClient` | The HTTP client. The default is `http.DefaultClient`. |
 | `WithHeader` | A header for every call, such as `Authorization`. |
 | `WithReadMaxBytes` | The largest response. The default is 4 MiB; zero removes the limit. |
-| `WithTimeout` | A deadline for calls whose context has none. Without one, a server that does not answer can block a call forever. |
+| `WithTimeout` | A deadline for calls whose context has none. Without one, a server that does not answer can block a call forever. Zero sets no deadline. |
 | `WithHook` | Code that runs around each call. |
 
 The context deadline goes to the server. For retries, pass a retrying client to `WithHTTPClient`, such as `StandardClient()` from [go-retryablehttp](https://github.com/hashicorp/go-retryablehttp).
