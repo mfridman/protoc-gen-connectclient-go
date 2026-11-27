@@ -19,6 +19,7 @@ import (
 	"path"
 	"regexp"
 	"runtime/debug"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -144,9 +145,19 @@ func generate(protogenPlugin *protogen.Plugin, packageSuffix string) error {
 }
 
 // checkCollisions returns an error if a generated name is already declared
-// by protoc-gen-go in the same Go package. This happens with an empty
+// by the client runtime, for example HTTPClient for a service named HTTP, or
+// by protoc-gen-go in the same Go package. The second happens with an empty
 // package_suffix, for example for a message named Client.
 func checkCollisions(protogenPlugin *protogen.Plugin, pkg *outputPackage, runtimeNames []string) error {
+	for _, service := range pkg.services {
+		name := serviceClientName(service)
+		if slices.Contains(runtimeNames, name) {
+			return fmt.Errorf(
+				"service %s generates the name %s, which the client runtime already declares; rename the service",
+				service.Desc.FullName(), name,
+			)
+		}
+	}
 	declared := make(map[string]struct{})
 	for _, file := range protogenPlugin.Files {
 		if file.GoImportPath != pkg.goImportPath {

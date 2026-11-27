@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- The plugin reports an error for a service whose client name collides with the client runtime, such as a service named `HTTP`, instead of generating code that does not compile
+
 ## [v0.2.0] - 2026-11-27
 
 ### Changed

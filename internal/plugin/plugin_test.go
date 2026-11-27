@@ -245,6 +245,8 @@ func TestErrors(t *testing.T) {
 		name      string
 		parameter string
 		files     []string
+		// rename renames services, by .proto file and service index.
+		rename    map[string][]string
 		wantError string
 	}{
 		{
@@ -271,6 +273,18 @@ func TestErrors(t *testing.T) {
 			files:     []string{"api/v1/repository.proto", "api/v1/user_owner.proto"},
 			wantError: "a .proto file generates the same name",
 		},
+		{
+			// HTTPClient and WithHTTPClient are declared by the runtime, and
+			// the default package_suffix does not avoid them.
+			name:      "runtime_name_collision",
+			rename:    map[string][]string{"admin/v1/admin.proto": {"HTTP"}},
+			wantError: "service admin.v1.HTTP generates the name HTTPClient, which the client runtime already declares",
+		},
+		{
+			name:      "runtime_name_collision_with_option",
+			rename:    map[string][]string{"admin/v1/admin.proto": {"WithHTTP"}},
+			wantError: "service admin.v1.WithHTTP generates the name WithHTTPClient",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -278,6 +292,11 @@ func TestErrors(t *testing.T) {
 			request := newTestRequest(t, test.parameter)
 			if test.files != nil {
 				request.FileToGenerate = test.files
+			}
+			for _, file := range request.GetProtoFile() {
+				for index, name := range test.rename[file.GetName()] {
+					file.GetService()[index].Name = new(name)
+				}
 			}
 			response, err := Generate(request)
 			requireNoError(t, err)
