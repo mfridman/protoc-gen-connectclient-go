@@ -19,9 +19,11 @@ Requires Go 1.26 or newer.
 
 ## Use
 
-In `buf.gen.yaml`:
+Add the plugin to your `buf.gen.yaml`:
 
 ```yaml
+# buf.gen.yaml
+version: v2
 plugins:
   - remote: buf.build/protocolbuffers/go
     out: gen

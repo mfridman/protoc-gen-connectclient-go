@@ -2,15 +2,15 @@
 
 `NewClient(baseURL, options...)` returns a `Client` with a field for each service. Each generated package has its own copy of the types below.
 
-| Option | Description |
-|---|---|
-| `WithHTTPClient` | The HTTP client. The default is `http.DefaultClient`. |
-| `WithHeader` | A header for every call, such as `Authorization`. |
-| `WithReadMaxBytes` | The largest response. The default is 4 MiB; zero removes the limit. |
-| `WithTimeout` | A deadline for calls whose context has none. Without one, a server that does not answer can block a call forever. Zero sets no deadline. |
-| `WithHook` | Code that runs around each call. |
+| Option | Default | Description |
+|---|---|---|
+| `WithHTTPClient` | `http.DefaultClient` | The HTTP client. For retries, use a retrying client, such as `StandardClient()` from [go-retryablehttp](https://github.com/hashicorp/go-retryablehttp). |
+| `WithHeader` | none | A header for every call, such as `Authorization`. |
+| `WithReadMaxBytes` | 4 MiB | The largest response. Zero removes the limit. |
+| `WithTimeout` | none | A deadline for calls whose context has none. Zero sets no deadline. |
+| `WithHook` | none | Code that runs around each call. See [Hooks](#hooks). |
 
-The context deadline goes to the server. For retries, pass a retrying client to `WithHTTPClient`, such as `StandardClient()` from [go-retryablehttp](https://github.com/hashicorp/go-retryablehttp).
+The context deadline goes to the server.
 
 ## Hooks
 
@@ -31,15 +31,22 @@ A hook that returns an error stops the call, and the call returns that error. Ho
 
 ## Errors
 
-A failed call returns an `*Error` with the `Procedure`, the Connect `Code` and `Message`, and `Details` (`Details[i].Message()` decodes one):
+A failed call returns an `*Error`:
 
 ```go
 if callError, ok := errors.AsType[*apiv1client.Error](err); ok && callError.Code == apiv1client.CodeNotFound {
-	// ...
+	// callError also has Procedure, Message, and Details.
+	// callError.Details[i].Message() decodes a detail.
 }
 ```
 
-Failed connections, cancellation, and deadlines give `CodeUnavailable`, `CodeCanceled`, and `CodeDeadlineExceeded`, and wrap the cause, so `errors.Is` works.
+Errors that do not come from the server wrap the cause, so `errors.Is` works:
+
+| Cause | Code |
+|---|---|
+| Failed connection | `CodeUnavailable` |
+| Canceled context | `CodeCanceled` |
+| Deadline exceeded | `CodeDeadlineExceeded` |
 
 ## Unix sockets
 
