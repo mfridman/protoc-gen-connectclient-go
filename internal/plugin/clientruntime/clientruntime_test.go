@@ -108,6 +108,30 @@ func TestDeadline(t *testing.T) {
 	})
 }
 
+func TestTimeout(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		echo := WithHTTPClient(handlerClient(func(w http.ResponseWriter, r *http.Request) {
+			writeProto(w, wrapperspb.String(r.Header.Get("Connect-Timeout-Ms")))
+		}))
+		conn := newConn("http://api.example.com", []Option{echo, WithTimeout(30 * time.Second)})
+		requireEqual(t, callString(t, conn, t.Context(), ""), "30000")
+		// A deadline on the context takes precedence.
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+		defer cancel()
+		requireEqual(t, callString(t, conn, ctx, ""), "5000")
+
+		hung := newConn("http://api.example.com", []Option{
+			WithTimeout(time.Minute),
+			WithHTTPClient(handlerClient(func(_ http.ResponseWriter, r *http.Request) { <-r.Context().Done() })),
+		})
+		start := time.Now()
+		err := hung.call(t.Context(), testProcedure, wrapperspb.String(""), &wrapperspb.StringValue{})
+		checkCode(t, err, CodeDeadlineExceeded)
+		requireEqual(t, time.Since(start), time.Minute)
+	})
+}
+
 func TestCancelAndDeadline(t *testing.T) {
 	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {

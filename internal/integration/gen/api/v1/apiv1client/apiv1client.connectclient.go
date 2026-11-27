@@ -84,6 +84,16 @@ func WithReadMaxBytes(readMaxBytes int64) Option {
 	})
 }
 
+// WithTimeout sets a deadline for calls whose context has none. The server
+// gets the deadline in the Connect-Timeout-Ms header. Without this option or
+// a context deadline, a call to a server that does not answer can wait
+// forever.
+func WithTimeout(timeout time.Duration) Option {
+	return optionFunc(func(config *clientConfig) {
+		config.timeout = timeout
+	})
+}
+
 // WithHook adds a hook that runs before each call. It can change the HTTP
 // request, for example to add headers; the protocol headers are set after the
 // hooks run, so a hook cannot change them. Returning an error stops the call,
@@ -198,6 +208,7 @@ type clientConfig struct {
 	httpClient   HTTPClient
 	header       http.Header
 	readMaxBytes int64
+	timeout      time.Duration
 	hooks        []func(*http.Request) (func(*http.Response, error), error)
 }
 
@@ -233,6 +244,11 @@ func newConn(baseURL string, options []Option) *conn {
 // and unmarshals the response into res. It runs the WithHook hooks around the
 // HTTP request.
 func (c *conn) call(ctx context.Context, procedure string, req, res proto.Message) error {
+	if _, ok := ctx.Deadline(); !ok && c.config.timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.config.timeout)
+		defer cancel()
+	}
 	body, err := proto.Marshal(req)
 	if err != nil {
 		return &Error{Procedure: procedure, Code: CodeInternal, Message: "marshal request: " + err.Error(), cause: err}

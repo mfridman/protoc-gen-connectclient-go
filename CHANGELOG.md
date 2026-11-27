@@ -17,7 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 
 - Deadlines and error details
-- `WithHeader` for headers on every call, and `WithReadMaxBytes` to limit the response size
+- `WithHeader` for headers on every call, `WithReadMaxBytes` to limit the response size, and `WithTimeout` for a default deadline
 - Support for Protobuf editions
 - Tested with the Connect conformance suite
 
