@@ -27,7 +27,7 @@ client := apiv1client.NewClient(baseURL, apiv1client.WithHook(
 ))
 ```
 
-A hook that returns an error stops the call, and the call returns that error. Hooks cannot change the protocol headers or the context.
+A hook that returns an error stops the call, and the call returns that error. Hooks cannot change the protocol headers, the body, or the context.
 
 ## Errors
 

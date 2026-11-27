@@ -95,9 +95,9 @@ func WithTimeout(timeout time.Duration) Option {
 }
 
 // WithHook adds a hook that runs before each call. It can change the HTTP
-// request, for example to add headers; the protocol headers are set after the
-// hooks run, so a hook cannot change them. Returning an error stops the call,
-// and the call returns that error unchanged.
+// request, for example to add headers; the protocol headers and the body are
+// set after the hooks run, so a hook cannot change them. Returning an error
+// stops the call, and the call returns that error unchanged.
 //
 // If the hook returns a done function, it runs after the call with the
 // response, or nil if none arrived, and the call's error, which is nil on
@@ -313,8 +313,12 @@ func setBody(httpRequest *http.Request, body []byte) {
 // It returns the response, if one arrived, and the call's error.
 func (c *conn) send(ctx context.Context, httpRequest *http.Request, body []byte, res proto.Message) (*http.Response, error) {
 	setBody(httpRequest, body)
-	for key := range protocolHeaders {
-		httpRequest.Header.Del(key)
+	// Header names are case-insensitive, and a hook can write a key that is
+	// not canonical, such as "content-type", directly into the map.
+	for key := range httpRequest.Header {
+		if _, ok := protocolHeaders[http.CanonicalHeaderKey(key)]; ok {
+			delete(httpRequest.Header, key)
+		}
 	}
 	httpRequest.Header.Set("Content-Type", contentTypeProto)
 	httpRequest.Header.Set("Connect-Protocol-Version", "1")

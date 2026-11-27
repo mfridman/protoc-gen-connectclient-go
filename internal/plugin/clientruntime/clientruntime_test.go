@@ -488,6 +488,22 @@ func TestHook(t *testing.T) {
 	requireEqual(t, strings.Join(events, "\n"), strings.Join(want, "\n"))
 }
 
+func TestHookNonCanonicalProtocolHeaders(t *testing.T) {
+	t.Parallel()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeProto(w, wrapperspb.String(fmt.Sprintf("%q %q",
+			r.Header.Values("Content-Type"), r.Header.Values("Connect-Timeout-Ms"))))
+	}))
+	t.Cleanup(server.Close)
+	conn := newConn(server.URL, []Option{WithHook(func(req *http.Request) (func(*http.Response, error), error) {
+		// Direct map writes skip the canonical form of the key.
+		req.Header["content-type"] = []string{"application/json"}
+		req.Header["connect-timeout-ms"] = []string{"1"}
+		return nil, nil
+	})})
+	requireEqual(t, callString(t, conn, t.Context(), ""), `["application/proto"] []`)
+}
+
 func TestHookStopsCall(t *testing.T) {
 	t.Parallel()
 	var requests atomic.Int32
